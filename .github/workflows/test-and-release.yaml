@@ -1,0 +1,176 @@
+name: Test and Release
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - Dockerfile
+      - .github/workflows/test-docker.yaml
+      - .github/workflows/publish-docker.yaml
+      - .github/workflows/cd.yaml
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    # Running CI in clean environment is currently not possible: https://github.com/NordicSemiconductor/asset-tracker-cloud-memfault-azure-js/issues/1
+    environment:
+      name: ci
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      B2C_TENANT: ${{ secrets.B2C_TENANT }}
+      LOCATION: ${{ secrets.LOCATION }}
+      APP_REG_CLIENT_ID: ${{ secrets.APP_REG_CLIENT_ID }}
+      B2C_CLIENT_SECRET: ${{ secrets.B2C_CLIENT_SECRET }}
+      B2C_TENANT_ID: ${{ secrets.B2C_TENANT_ID }}
+      RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+      MOCK_HTTP_API_STORAGE_ACCOUNT_NAME: mockhttpapi
+
+    steps:
+      - name: Print azure CLI version
+        uses: azure/CLI@v1
+        with:
+          inlineScript: az --version
+      # We are authenticating here the non-containerized environment, so we
+      # can run the Azure JavaScript SDK with these credentials
+      # Needs to be done before the in-container auth in the next step
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      # In-container auth in the next step
+      - name: Login to Azure CLI
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            AZURE_CLIENT_ID=`jq -r '.clientId' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
+            AZURE_CLIENT_SECRET=`jq -r '.clientSecret' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
+            AZURE_TENANT_ID=`jq -r '.tenantId' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
+            echo "::add-mask::${AZURE_CLIENT_ID}"
+            echo "::add-mask::${AZURE_CLIENT_SECRET}"
+            echo "::add-mask::${AZURE_TENANT_ID}"
+            az login --service-principal -u ${AZURE_CLIENT_ID} -p ${AZURE_CLIENT_SECRET} --tenant ${AZURE_TENANT_ID}
+      - name: List Azure accounts
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az account list --output table
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16.x"
+      - uses: actions/checkout@v3
+      - name: Keep npm cache around to speed up installs
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci --no-audit
+      - run: npx tsc
+      - name: Run Unit Tests
+        run: npm test
+      - name: Deploy Mock HTTP API
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az deployment group create \
+              --resource-group ${RESOURCE_GROUP:-memfaultci} \
+              --mode Incremental \
+              --name test-mock-http-api-${{ github.sha }} \
+              --template-file mock-http-api.json \
+              --parameters \
+                storageAccountName=${MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:-mockhttpapi}
+      - name: Determine Mock API endpoint
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${RESOURCE_GROUP:-memfaultci} -n ${MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:-mockhttpapi}Functions | jq -r '.defaultHostName'`" >> $GITHUB_ENV
+      - name: Pack mock functions
+        run: node scripts/pack-mock-http-api-app.js
+      - name: Deploy mock functions
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-memfaultci} -n ${MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:-mockhttpapi}Functions --src dist/mock-http-api.zip
+      - name: Set random nRF Cloud Team ID
+        run: |
+          echo "NRF_CLOUD_TEAM_ID=`uuidgen`" >> $GITHUB_ENV
+      - name: Set Key Vault name
+        run: |
+          echo "keyVaultName=${APP_NAME:-memfaultci}" >> $GITHUB_ENV
+      - name: Set secrets for third party APIs
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            AZURE_CLIENT_ID=`jq -r '.clientId' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
+            echo "::add-mask::${AZURE_CLIENT_ID}"
+            az keyvault set-policy --name ${keyVaultName} --spn ${AZURE_CLIENT_ID} --secret-permissions set
+            az keyvault secret set --vault-name ${keyVaultName} --name unwiredlabsApiKey --value my-secret
+            openssl ecparam -name secp256k1 -genkey > nrfcloudcelllocationservice.key
+            az keyvault secret set --vault-name ${keyVaultName} --name nrfCloudCellLocationServiceKey --file nrfcloudcelllocationservice.key
+            openssl ecparam -name secp256k1 -genkey > nrfcloudagpslocationservice.key
+            az keyvault secret set --vault-name ${keyVaultName} --name nrfCloudAGPSLocationServiceKey --file nrfcloudagpslocationservice.key
+            openssl ecparam -name secp256k1 -genkey > nrfcloudpgpslocationservice.key
+            az keyvault secret set --vault-name ${keyVaultName} --name nrfCloudPGPSLocationServiceKey --file nrfcloudpgpslocationservice.key
+      - name: Deploy solution
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az deployment group create \
+              --resource-group ${RESOURCE_GROUP:-memfaultci} \
+              --mode Incremental \
+              --name test-${{ github.sha }} \
+              --template-file azuredeploy.json \
+              --parameters \
+                appName=${APP_NAME:-memfaultci} \
+                appRegistrationClientId=${APP_REG_CLIENT_ID} \
+                b2cTenant=${B2C_TENANT} \
+                b2cFlowName=B2C_1_developer \
+                enableUnwiredLabsCellLocation=true \
+                unwiredlabsApiEndpoint=https://${MOCK_HTTP_API_ENDPOINT}/api/eu1.unwiredlabs.com/ \
+                enableNrfCloudCellLocationService=true \
+                enableNrfCloudAGPSLocationService=true \
+                enableNrfCloudPGPSLocationService=true \
+                nrfCloudTeamId=${NRF_CLOUD_TEAM_ID} \
+                nrfCloudApiEndpoint=https://${MOCK_HTTP_API_ENDPOINT}/api/api.nrfcloud.com/ \
+                keyVaultName=${keyVaultName}
+      - name: Pack functions
+        run: node scripts/pack-app.js
+      - name: Deploy Function App
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-memfaultci} -n ${APP_NAME:-memfaultci}api --src dist/functionapp.zip
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: functionapp-${{ github.sha }}
+          path: dist/functionapp.zip
+      - name: Cache certificates
+        uses: actions/cache@v3
+        id: certs-cache
+        with:
+          path: ./certificates
+          key: certificates-2021-09-13
+      - name: Create Intermediate CA certificate
+        if: steps.certs-cache.outputs.cache-hit != 'true'
+        run: |
+          node cli create-ca-root
+          node cli proof-ca-root-possession
+          node cli create-ca-intermediate
+      - name: Run End-to-End Tests
+        uses: nick-invision/retry@v2
+        env:
+          FORCE_COLOR: 3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: npm run test:e2e
+      - name: Delete device certificates
+        run: rm ./certificates/*/device-*
+      - name: Semantic release
+        if: success()
+        continue-on-error: true
+        run: npx semantic-release

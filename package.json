@@ -1,0 +1,75 @@
+{
+  "name": "@nordicsemiconductor/asset-tracker-cloud-memfault-azure",
+  "version": "0.0.0-development",
+  "description": "Memfault integration for Azure IoT Hub developed in TypeScript.",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:e2e": "node --unhandled-rejections=strict dist/feature-runner/run-features.js ./features --print-results --progress",
+    "postinstall": "husky install && check-node-version --package",
+    "prepublishOnly": "pinst --disable",
+    "postpublish": "pinst --enable"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NordicSemiconductor/asset-tracker-cloud-memfault-azure-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NordicSemiconductor/asset-tracker-cloud-memfault-azure-js/issues"
+  },
+  "homepage": "https://nordicsemiconductor.github.io/asset-tracker-cloud-docs/",
+  "keywords": [
+    "nrf-asset-tracker",
+    "iot",
+    "memfault",
+    "azure",
+    "arm"
+  ],
+  "author": "Nordic Semiconductor ASA | nordicsemi.no",
+  "license": "BSD-3-Clause",
+  "dependencies": {},
+  "devDependencies": {
+    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.72",
+    "@nordicsemiconductor/e2e-bdd-test-runner": "15.1.4",
+    "@swc/jest": "0.2.21",
+    "@types/node": "17.0.35",
+    "check-node-version": "4.2.1"
+  },
+  "lint-staged": {
+    "*.{md,json,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --ext .js,.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=16",
+    "npm": ">=8"
+  },
+  "release": {
+    "branches": [
+      "saga",
+      {
+        "name": "!(saga)",
+        "prerelease": true
+      }
+    ],
+    "remoteTags": true,
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/github"
+    ]
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(t|j)sx?$": [
+        "@swc/jest"
+      ]
+    },
+    "testRegex": ".+\\.spec\\.ts$"
+  },
+  "prettier": "@nordicsemiconductor/asset-tracker-cloud-code-style/.prettierrc"
+}

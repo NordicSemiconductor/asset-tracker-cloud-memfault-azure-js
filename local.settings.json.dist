@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "IOTHUB_EVENTS_CONNECTION_STRING": "< ... >",
+    "AzureWebJobsStorage": "< ... >",
+    "IOTHUB_EVENTS_EVENT_HUB_NAME": "< ... >",
+    "SignalRConnectionString": "< ... >"
+  },
+  "Host": {
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
