@@ -2,8 +2,6 @@ name: Sync repository info from package.json
 
 env:
   GITHUB_TOKEN: ${{ secrets.UPDATE_REPO_INFO_PAT }}
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 permissions:
   contents: write
