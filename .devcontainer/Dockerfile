@@ -1,5 +1,5 @@
 # Start from the dotnet base image to allow easy install of Powershell and ensure common tools are available for things like the bicep language server.
-FROM mcr.microsoft.com/dotnet/sdk:5.0
+FROM mcr.microsoft.com/dotnet/sdk:7.0
 
 # Configure the release version of Bicep you'd like to use
 ARG BICEP_VERSION=latest
