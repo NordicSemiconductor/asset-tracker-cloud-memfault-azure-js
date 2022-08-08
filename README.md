@@ -72,7 +72,13 @@ Install the dependencies:
 
 ### Deploy
 
-    // FIXME: document
+    az deployment group create \
+    --name manual-deployment \
+    --resource-group ${RESOURCE_GROUP:-nrfassettracker} \
+    --template-file memfault-integration.bicep \
+    --parameters \
+        nrfAssetTrackerApp=${APP_NAME:-nrfassettracker} \
+        storageAccountName=mmfltint
 
 ## Configure memfault settings
 

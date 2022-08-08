@@ -71,6 +71,11 @@ jobs:
       - run: npx tsc
       - name: Run Unit Tests
         run: npm test
+      - name: Verify bicep file
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az bicep build -f memfault-integration.bicep
       - name: Deploy Mock HTTP API
         uses: azure/CLI@v1
         with:
