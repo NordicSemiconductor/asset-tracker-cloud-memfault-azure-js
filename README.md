@@ -72,13 +72,17 @@ Install the dependencies:
 
 ### Deploy
 
+    az group create -n ${RESOURCE_GROUP:-memfault} -l ${LOCATION:-northeurope}
     az deployment group create \
+    --mode Complete \
     --name manual-deployment \
-    --resource-group ${RESOURCE_GROUP:-nrfassettracker} \
+    --resource-group ${RESOURCE_GROUP:-memfault} \
     --template-file memfault-integration.bicep \
     --parameters \
-        nrfAssetTrackerApp=${APP_NAME:-nrfassettracker} \
-        storageAccountName=mmfltint
+        iotHubName=${IOT_HUB_NAME:-nrfassettrackerIotHub} \
+        iotHubResourceGroup=${IOT_HUB_RESOURCE_GROUP:-nrfassettracker} \
+        keyVaultName=${KEY_VAULT_NAME:-MemfaultIntegration} \
+        storageAccountName=${STORAGE_ACCOUNT_NAME:-MemfaultIntegration}
 
 ## Configure memfault settings
 

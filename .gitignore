@@ -9,3 +9,5 @@ build/
 local.settings.json
 log.log
 memfault-integration.json
+memfault-consumer-group.json
+.net
