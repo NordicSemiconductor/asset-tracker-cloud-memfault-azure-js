@@ -29,7 +29,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2019-08-01' = {
 }
 
 resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
-  name: '${storageAccountName}Functions'
+  name: 'MockHttpAPI'
   location: location
   kind: 'functionapp'
   identity: {

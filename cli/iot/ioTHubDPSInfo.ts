@@ -8,8 +8,12 @@ export const ioTHubDPSInfo =
 	({
 		resourceGroupName,
 		credentials,
+		dpsName,
+		iotHubName,
 	}: {
 		resourceGroupName: string
+		dpsName: string
+		iotHubName: string
 		credentials:
 			| {
 					credentials: AzureCliCredential
@@ -37,18 +41,9 @@ export const ioTHubDPSInfo =
 		)
 
 		const [keys, dpsInfo, iotHubInfo] = await Promise.all([
-			armIotDpsClient.iotDpsResource.listKeys(
-				`${resourceGroupName}ProvisioningService`,
-				resourceGroupName,
-			),
-			armIotDpsClient.iotDpsResource.get(
-				`${resourceGroupName}ProvisioningService`,
-				resourceGroupName,
-			),
-			armIotHubClient.iotHubResource.get(
-				resourceGroupName,
-				`${resourceGroupName}IoTHub`,
-			),
+			armIotDpsClient.iotDpsResource.listKeys(dpsName, resourceGroupName),
+			armIotDpsClient.iotDpsResource.get(dpsName, resourceGroupName),
+			armIotHubClient.iotHubResource.get(resourceGroupName, iotHubName),
 		])
 
 		let primaryKey: string | undefined = undefined

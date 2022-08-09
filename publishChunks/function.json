@@ -1,0 +1,14 @@
+{
+  "bindings": [
+    {
+      "name": "requests",
+      "type": "eventHubTrigger",
+      "direction": "in",
+      "eventHubName": "%IOTHUB_EVENTS_EVENT_HUB_NAME%",
+      "connection": "IOTHUB_EVENTS_CONNECTION_STRING",
+      "cardinality": "many",
+      "consumerGroup": "%MEMFAULT_IOT_EVENTS_CONSUMER_GROUP_NAME%"
+    }
+  ],
+  "scriptFile": "./handler.mjs"
+}

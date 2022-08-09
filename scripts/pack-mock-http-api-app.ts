@@ -1,7 +1,7 @@
 import {
-	packageFunctionApp,
 	installPackagesFromList,
-} from '../dist/pack/package-function-app.js'
+	packageFunctionApp,
+} from '../pack/package-function-app.js'
 
 void packageFunctionApp({
 	outFileId: 'mock-http-api',
@@ -10,6 +10,6 @@ void packageFunctionApp({
 		'@azure/functions',
 		'@azure/data-tables',
 		'@azure/logger',
-		'uuid',
+		'id128',
 	]),
 })

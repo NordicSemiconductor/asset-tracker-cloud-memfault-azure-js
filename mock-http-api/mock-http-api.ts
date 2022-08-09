@@ -3,9 +3,9 @@ import { AzureFunction, Context, HttpRequest } from '@azure/functions'
 import { setLogLevel } from '@azure/logger'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import { URL } from 'url'
-import { v4 } from 'uuid'
 import { result } from '../lib/http.js'
 import { log, logError } from '../lib/log.js'
+import { ulid } from '../lib/ulid.js'
 import { encodeQuery } from './encodeQuery.js'
 import { sortQueryString } from './sortQueryString.js'
 
@@ -38,7 +38,7 @@ const mockHTTPAPI: AzureFunction = async (
 			`${path}${encodeQuery(req.query as Record<string, string>)}`,
 		)
 		const methodPathQuery = `${req.method} ${pathWithQuery}`
-		const requestId = v4()
+		const requestId = ulid()
 		const request = {
 			partitionKey: requestId,
 			rowKey: encodeURIComponent(methodPathQuery),

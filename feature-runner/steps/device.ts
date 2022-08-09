@@ -6,14 +6,14 @@ import {
 } from '@nordicsemiconductor/e2e-bdd-test-runner'
 import * as chai from 'chai'
 import { expect } from 'chai'
-import * as chaiSubset from 'chai-subset'
+import chaiSubset from 'chai-subset'
 import { MqttClient } from 'mqtt'
 import fetch from 'node-fetch'
-import { v4 } from 'uuid'
 import { connectDevice } from '../../cli/iot/connectDevice.js'
 import { createSimulatorKeyAndCSR } from '../../cli/iot/createSimulatorKeyAndCSR.js'
 import { deviceTopics } from '../../cli/iot/deviceTopics.js'
 import { generateDeviceCertificate } from '../../cli/iot/generateDeviceCertificate.js'
+import { ulid } from '../../lib/ulid.js'
 import { matchDeviceBoundTopic } from './device/matchDeviceBoundTopic.js'
 chai.use(chaiSubset)
 
@@ -58,7 +58,7 @@ export const deviceStepRunners = ({
 			const reported = JSON.parse(step.interpolatedArgument)
 			const connection = connections[deviceId]
 			connection.publish(
-				deviceTopics.updateTwinReported(v4()),
+				deviceTopics.updateTwinReported(ulid()),
 				JSON.stringify(reported),
 			)
 		}),
@@ -151,7 +151,7 @@ export const deviceStepRunners = ({
 			const connection = connections[deviceId]
 			const state: Record<string, any> = await new Promise(
 				(resolve, reject) => {
-					const getTwinPropertiesRequestId = v4()
+					const getTwinPropertiesRequestId = ulid()
 					const i = setTimeout(reject, 20000)
 					connection.publish(
 						deviceTopics.getTwinProperties(getTwinPropertiesRequestId),

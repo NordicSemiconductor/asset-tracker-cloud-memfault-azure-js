@@ -56,7 +56,7 @@ export const packageFunctionApp = async ({
 }: {
 	outFileId: string
 	functions?: string[]
-	ignoreFunctions?: string
+	ignoreFunctions?: string[]
 	installDependencies?: (_: { targetDir: string }) => Promise<void>
 }): Promise<string> => {
 	const outFile = path.resolve(process.cwd(), 'dist', `${outFileId}.zip`)

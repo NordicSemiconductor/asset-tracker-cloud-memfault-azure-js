@@ -135,7 +135,7 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
           value: '1'
         }
         {
-          name: 'STORE_DEVICE_UPDATES_IOT_EVENTS_CONSUMER_GROUP_NAME'
+          name: 'MEMFAULT_IOT_EVENTS_CONSUMER_GROUP_NAME'
           value: consumerGroupModule.outputs.consumerGroupName
         }
         {
