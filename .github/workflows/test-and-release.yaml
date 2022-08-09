@@ -75,7 +75,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az bicep build -f memfault-integration.bicep
+            find ./ -type f -name \*.bicep | xargs -I@ az bicep build -f @
       - name: Deploy Mock HTTP API
         uses: azure/CLI@v1
         with:

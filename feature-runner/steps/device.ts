@@ -6,7 +6,7 @@ import {
 } from '@nordicsemiconductor/e2e-bdd-test-runner'
 import * as chai from 'chai'
 import { expect } from 'chai'
-import chaiSubset from 'chai-subset'
+import * as chaiSubset from 'chai-subset'
 import { MqttClient } from 'mqtt'
 import fetch from 'node-fetch'
 import { v4 } from 'uuid'

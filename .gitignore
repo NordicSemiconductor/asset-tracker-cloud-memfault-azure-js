@@ -10,4 +10,5 @@ local.settings.json
 log.log
 memfault-integration.json
 memfault-consumer-group.json
+mock-http-api.json
 .net

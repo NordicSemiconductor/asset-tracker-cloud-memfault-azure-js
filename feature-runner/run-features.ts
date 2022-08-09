@@ -8,8 +8,9 @@ import {
 	restStepRunners,
 	storageStepRunners,
 } from '@nordicsemiconductor/e2e-bdd-test-runner'
+import { fromEnv } from '@nordicsemiconductor/from-env'
 import chalk from 'chalk'
-import { program } from 'commander'
+import commander from 'commander'
 import * as path from 'path'
 import { v4 } from 'uuid'
 import { cliCredentials } from '../cli/cliCredentials.js'
@@ -22,11 +23,6 @@ import { list } from '../cli/iot/intermediateRegistry.js'
 import { ioTHubDPSInfo } from '../cli/iot/ioTHubDPSInfo.js'
 import { debug, error, heading, settings } from '../cli/logging.js'
 import { run } from '../cli/process/run.js'
-import { fromEnv } from '../lib/fromEnv.js'
-import { gpsDay } from '../pgps/gpsTime.js'
-import { randomEmail } from './lib/randomEmail.js'
-import { randomPassword } from './lib/randomPassword.js'
-import { b2cSteps } from './steps/b2c.js'
 import { deviceStepRunners } from './steps/device.js'
 import { httpApiMockStepRunners } from './steps/httpApiMock.js'
 
@@ -35,10 +31,9 @@ let ran = false
 export type World = {
 	apiEndpoint: string
 	'httpApiMock:apiEndpoint': string
-	currentGpsDay: number
 }
 
-program
+commander.program
 	.arguments('<featureDir>')
 	.option('-r, --print-results', 'Print results')
 	.option('-p, --progress', 'Print progress')
@@ -171,7 +166,6 @@ program
 			const world: World = {
 				apiEndpoint: `${apiEndpointUrl}api/`,
 				'httpApiMock:apiEndpoint': `${mockHTTPApiEndpointUrl}api/`,
-				currentGpsDay: gpsDay(),
 			} as const
 			heading('World')
 			settings(world)
@@ -195,18 +189,8 @@ program
 				.addStepRunners(
 					randomStepRunners({
 						generators: {
-							email: randomEmail,
-							password: randomPassword,
 							UUID: v4,
 						},
-					}),
-				)
-				.addStepRunners(
-					await b2cSteps({
-						b2cTenant,
-						clientId,
-						clientSecret,
-						b2cTenantId,
 					}),
 				)
 				.addStepRunners(restStepRunners())
@@ -246,6 +230,6 @@ program
 	.parse(process.argv)
 
 if (!ran) {
-	program.outputHelp()
+	commander.program.outputHelp()
 	process.exit(1)
 }
