@@ -28,10 +28,10 @@
   "author": "Nordic Semiconductor ASA | nordicsemi.no",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.107",
-    "@nordicsemiconductor/e2e-bdd-test-runner": "15.1.70",
+    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.109",
+    "@nordicsemiconductor/e2e-bdd-test-runner": "15.1.73",
     "@swc/jest": "0.2.22",
-    "@types/node": "18.6.4",
+    "@types/node": "18.6.5",
     "check-node-version": "4.2.1",
     "jest": "28.1.3"
   },
