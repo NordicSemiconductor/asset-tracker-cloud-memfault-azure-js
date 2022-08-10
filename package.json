@@ -90,6 +90,6 @@
   },
   "prettier": "@nordicsemiconductor/asset-tracker-cloud-code-style/.prettierrc",
   "dependencies": {
-    "@nordicsemiconductor/from-env": "1.0.1"
+    "@nordicsemiconductor/from-env": "1.0.2"
   }
 }
