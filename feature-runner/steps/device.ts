@@ -1,51 +1,97 @@
+import { IotHubClient } from '@azure/arm-iothub'
 import {
 	InterpolatedStep,
 	regexGroupMatcher,
 	regexMatcher,
 	StepRunnerFunc,
 } from '@nordicsemiconductor/e2e-bdd-test-runner'
+import { randomWords } from '@nordicsemiconductor/random-words'
 import * as chai from 'chai'
 import { expect } from 'chai'
 import chaiSubset from 'chai-subset'
 import { MqttClient } from 'mqtt'
-import fetch from 'node-fetch'
+import { CertificateCreationResult, createCertificate } from 'pem'
 import { connectDevice } from '../../cli/iot/connectDevice.js'
-import { createSimulatorKeyAndCSR } from '../../cli/iot/createSimulatorKeyAndCSR.js'
 import { deviceTopics } from '../../cli/iot/deviceTopics.js'
-import { generateDeviceCertificate } from '../../cli/iot/generateDeviceCertificate.js'
+import { leafCertConfig } from '../../cli/iot/pemConfig.js'
 import { ulid } from '../../lib/ulid.js'
 import { matchDeviceBoundTopic } from './device/matchDeviceBoundTopic.js'
 chai.use(chaiSubset)
 
+/**
+ * Ensures certificate names are not too long.
+ */
+const certificateName = (name: string): string =>
+	name.slice(0, 64).replace(/-$/, '')
+
+const certs: Record<string, CertificateCreationResult> = {}
+
 export const deviceStepRunners = ({
-	certsDir,
-	intermediateCertId,
+	iotHub,
+	iotHubHostname,
+	iotHubName,
+	iotHubResourceGroup,
 }: {
-	certsDir: string
-	intermediateCertId: string
+	iotHub: IotHubClient
+	iotHubHostname: string
+	iotHubName: string
+	iotHubResourceGroup: string
 }): ((step: InterpolatedStep) => StepRunnerFunc<any> | false)[] => {
 	const connections = {} as Record<string, MqttClient>
-	let fwResult = ''
-	return [
-		regexGroupMatcher(
-			/^I generate a certificate for the (?:device|tracker) "(?<deviceId>[^"]+)"$/,
-		)(async ({ deviceId }) => {
-			await createSimulatorKeyAndCSR({ certsDir, deviceId })
-			await generateDeviceCertificate({
-				deviceId,
-				certsDir,
-				intermediateCertId,
-			})
 
-			return deviceId
-		}),
-		regexGroupMatcher(
-			/^I connect the (?:device|tracker) "(?<deviceId>[^"]+)"$/,
-		)(async ({ deviceId }) => {
+	return [
+		regexMatcher(/^I connect a device$/)(async (_, __, runner) => {
+			// FIXME: see https://docs.microsoft.com/en-us/azure/iot-hub/tutorial-x509-self-sign for creating test certificates
+			const deviceId = (await randomWords({ numWords: 3 })).join('-')
+			certs[deviceId] =
+				certs[deviceId] ??
+				(await new Promise<CertificateCreationResult>((resolve, reject) =>
+					createCertificate(
+						{
+							commonName: deviceId,
+							serial: Math.floor(Math.random() * 1000000000),
+							days: 1,
+							config: leafCertConfig(deviceId),
+						},
+						(err, cert) => {
+							if (err !== null && err !== undefined) return reject(err)
+							resolve(cert)
+						},
+					),
+				))
+
+			await runner.progress(`IoT`, `Registering certificate for ${deviceId}`)
+			const res = await iotHub.certificates.createOrUpdate(
+				iotHubResourceGroup,
+				iotHubName,
+				certificateName(deviceId),
+				{
+					properties: {
+						certificate: certs[deviceId].certificate,
+					},
+				},
+			)
+			await runner.progress(`IoT`, JSON.stringify(res))
+			await runner.progress(
+				`Connecting`,
+				JSON.stringify(
+					{
+						deviceId,
+						iotHub: iotHubHostname,
+						key: certs[deviceId].clientKey,
+						certificate: certs[deviceId].certificate,
+					},
+					null,
+					2,
+				),
+			)
 			const connection = await connectDevice({
 				deviceId,
-				certsDir,
+				iotHub: iotHubHostname,
+				key: certs[deviceId].clientKey,
+				certificate: certs[deviceId].certificate,
 			})
+
 			connections[deviceId] = connection
 			return deviceId
 		}),
@@ -182,21 +228,5 @@ export const deviceStepRunners = ({
 			}
 			return state
 		}),
-		regexGroupMatcher(/^I download the firmware from (?<fwPackageURI>http.+)$/)(
-			async ({ fwPackageURI }) => {
-				const res = await fetch(fwPackageURI)
-				expect(res.status).to.equal(200)
-				fwResult = await (await res.blob()).text()
-				return [fwPackageURI, fwResult]
-			},
-		),
-		regexMatcher(/^the firmware file should contain this payload$/)(
-			async (_, step) => {
-				if (step.interpolatedArgument === undefined) {
-					throw new Error('Must provide argument!')
-				}
-				expect(fwResult).to.equal(step.interpolatedArgument)
-			},
-		),
 	]
 }

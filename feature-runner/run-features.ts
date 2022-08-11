@@ -1,4 +1,5 @@
 import { WebSiteManagementClient } from '@azure/arm-appservice'
+import { IotHubClient } from '@azure/arm-iothub'
 import { AzureNamedKeyCredential } from '@azure/core-auth'
 import { TableClient } from '@azure/data-tables'
 import {
@@ -11,15 +12,8 @@ import {
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import chalk from 'chalk'
 import program from 'commander'
-import * as path from 'path'
 import { cliCredentials } from '../cli/cliCredentials.js'
-import {
-	CAIntermediateFileLocations,
-	CARootFileLocations,
-} from '../cli/iot/caFileLocations.js'
-import { fingerprint } from '../cli/iot/fingerprint.js'
-import { list } from '../cli/iot/intermediateRegistry.js'
-import { ioTHubDPSInfo } from '../cli/iot/ioTHubDPSInfo.js'
+import { progress as logProgress } from '../cli/logging'
 import { debug, error, heading, settings } from '../cli/logging.js'
 import { run } from '../cli/process/run.js'
 import { ulid } from '../lib/ulid.js'
@@ -57,13 +51,11 @@ program
 				resourceGroup,
 				iotHubResourceGroup,
 				iotHubName,
-				iotHubDPSName,
 				mockHTTPStorageAccountName,
 				mockHTTPResourceGroup,
 			} = fromEnv({
 				resourceGroup: 'RESOURCE_GROUP',
 				iotHubResourceGroup: 'IOT_HUB_RESOURCE_GROUP',
-				iotHubDPSName: 'IOT_HUB_DPS_NAME',
 				iotHubName: 'IOT_HUB_NAME',
 				mockHTTPStorageAccountName: 'MOCK_HTTP_API_STORAGE_ACCOUNT_NAME',
 				mockHTTPResourceGroup: 'MOCK_API_RESOURCE_GROUP',
@@ -73,9 +65,11 @@ program
 				...process.env,
 			})
 
+			logProgress('Azure', 'Getting credentials...')
 			const { credentials, subscriptionId } = await cliCredentials()
 
 			const wsClient = new WebSiteManagementClient(credentials, subscriptionId)
+			logProgress('Azure', 'Fetching mock API settings')
 			const [mockHTTPApiEndpoint, mockHTTPApiSettings] = await Promise.all([
 				wsClient.webApps
 					.get(mockHTTPResourceGroup, `MockHttpAPI`)
@@ -110,40 +104,21 @@ program
 			}
 			const mockHTTPApiEndpointUrl = `https://${mockHTTPApiEndpoint}/`
 
-			const certsDir = await ioTHubDPSInfo({
-				resourceGroupName: iotHubResourceGroup,
+			logProgress('Azure', 'Fetching IoT Hub info')
+			const iotHubClient = new IotHubClient(credentials, subscriptionId)
+			const res = await iotHubClient.iotHubResource.get(
+				iotHubResourceGroup,
 				iotHubName,
-				dpsName: iotHubDPSName,
-				credentials: {
-					credentials,
-					subscriptionId,
-				},
-			})().then(({ hostname }) =>
-				path.join(process.cwd(), 'certificates', hostname),
 			)
-
-			const intermediateCerts = await list({ certsDir })
-			const intermediateCertId = intermediateCerts[0]
-			if (intermediateCertId === undefined) {
-				error(`Intermediate certificate not found!`)
-				process.exit(1)
-			}
-			const intermediateCaFiles = CAIntermediateFileLocations({
-				certsDir,
-				id: intermediateCertId,
-			})
-			const rootCaFiles = CARootFileLocations(certsDir)
+			const iotHubHostname = res.properties?.hostName as string
 
 			settings({
 				Subscription: subscriptionId,
 				'Resource Group': resourceGroup,
-				'Certificate dir': certsDir,
-				'Root CA fingerprint': await fingerprint(rootCaFiles.cert),
-				'Intermediate CA ID': intermediateCertId,
-				'Intermediate CA fingerprint': await fingerprint(
-					intermediateCaFiles.cert,
-				),
 				'Mock HTTP API endpoint': mockHTTPApiEndpointUrl,
+				'IoT Hub Resource Group': iotHubResourceGroup,
+				'IoT Hub Name': iotHubName,
+				'IoT Hub Endpoint': iotHubHostname,
 			})
 
 			const world: World = {
@@ -176,7 +151,14 @@ program
 					}),
 				)
 				.addStepRunners(restStepRunners())
-				.addStepRunners(deviceStepRunners({ certsDir, intermediateCertId }))
+				.addStepRunners(
+					deviceStepRunners({
+						iotHub: iotHubClient,
+						iotHubHostname,
+						iotHubName,
+						iotHubResourceGroup,
+					}),
+				)
 				.addStepRunners(storageStepRunners())
 				.addStepRunners(
 					(() => {
