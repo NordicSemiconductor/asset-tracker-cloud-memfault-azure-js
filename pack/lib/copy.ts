@@ -1,6 +1,6 @@
+import chalk from 'chalk'
 import { promises as fs } from 'fs'
 import path from 'path'
-import chalk from 'chalk'
 
 export const copyFile = async (
 	source: string,
