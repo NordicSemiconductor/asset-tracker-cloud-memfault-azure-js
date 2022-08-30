@@ -137,6 +137,9 @@ Admin → Organization Auth Tokens in the Memfault UI.
     # Observe logs
     az webapp log tail --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} --name MockHttpAPI
 
+    # Run the end-to-end tests
+    npm run test:e2e
+
 ### Deploy app
 
     npx tsx scripts/pack-app.ts
