@@ -6,16 +6,18 @@ import {
 	StepRunnerFunc,
 } from '@nordicsemiconductor/e2e-bdd-test-runner'
 import { randomWords } from '@nordicsemiconductor/random-words'
+import { Registry } from 'azure-iothub'
 import * as chai from 'chai'
 import { expect } from 'chai'
 import chaiSubset from 'chai-subset'
+import { readFile } from 'fs/promises'
 import { MqttClient } from 'mqtt'
-import { CertificateCreationResult, createCertificate } from 'pem'
+import path from 'path'
 import { connectDevice } from '../../cli/iot/connectDevice.js'
 import { deviceTopics } from '../../cli/iot/deviceTopics.js'
-import { leafCertConfig } from '../../cli/iot/pemConfig.js'
 import { ulid } from '../../lib/ulid.js'
 import { matchDeviceBoundTopic } from './device/matchDeviceBoundTopic.js'
+import { selfSignedCertificate } from './device/selfSignedIotCertificate.js'
 chai.use(chaiSubset)
 
 /**
@@ -24,18 +26,27 @@ chai.use(chaiSubset)
 const certificateName = (name: string): string =>
 	name.slice(0, 64).replace(/-$/, '')
 
-const certs: Record<string, CertificateCreationResult> = {}
+const certs: Record<
+	string,
+	{
+		certificate: string
+		key: string
+		fingerprint: string
+	}
+> = {}
 
 export const deviceStepRunners = ({
 	iotHub,
 	iotHubHostname,
 	iotHubName,
 	iotHubResourceGroup,
+	registry,
 }: {
 	iotHub: IotHubClient
 	iotHubHostname: string
 	iotHubName: string
 	iotHubResourceGroup: string
+	registry: Registry
 }): ((step: InterpolatedStep) => StepRunnerFunc<any> | false)[] => {
 	const connections = {} as Record<string, MqttClient>
 
@@ -43,25 +54,12 @@ export const deviceStepRunners = ({
 		regexMatcher(/^I connect a device$/)(async (_, __, runner) => {
 			// FIXME: see https://docs.microsoft.com/en-us/azure/iot-hub/tutorial-x509-self-sign for creating test certificates
 			const deviceId = (await randomWords({ numWords: 3 })).join('-')
+
 			certs[deviceId] =
-				certs[deviceId] ??
-				(await new Promise<CertificateCreationResult>((resolve, reject) =>
-					createCertificate(
-						{
-							commonName: deviceId,
-							serial: Math.floor(Math.random() * 1000000000),
-							days: 1,
-							config: leafCertConfig(deviceId),
-						},
-						(err, cert) => {
-							if (err !== null && err !== undefined) return reject(err)
-							resolve(cert)
-						},
-					),
-				))
+				certs[deviceId] ?? (await selfSignedCertificate({ deviceId }))
 
 			await runner.progress(`IoT`, `Registering certificate for ${deviceId}`)
-			const res = await iotHub.certificates.createOrUpdate(
+			const certRegistrationRes = await iotHub.certificates.createOrUpdate(
 				iotHubResourceGroup,
 				iotHubName,
 				certificateName(deviceId),
@@ -71,14 +69,39 @@ export const deviceStepRunners = ({
 					},
 				},
 			)
-			await runner.progress(`IoT`, JSON.stringify(res))
+			await runner.progress(`IoT`, JSON.stringify(certRegistrationRes))
+
+			/*
+
+			{"properties":{"subject":"unformed-mayaarch-straiten","expiry":"2022-09-02T15:18:47.000Z","thumbprint":"DDA88CEC58806CAF47A69EC0761AF22295AFAC48","isVerified":false,"created":"2001-01-01T00:00:00.000Z","updated":"2022-08-31T15:18:24.000Z","certificate":"-----BEGIN CERTIFICATE-----\nMIIC0TCCAbkCFEDXsuz+hlNADxZolQXAaySAAHsmMA0GCSqGSIb3DQEBCwUAMCUx\nIzAhBgNVBAMMGnVuZm9ybWVkLW1heWFhcmNoLXN0cmFpdGVuMB4XDTIyMDgzMTE1\nMTg0N1oXDTIyMDkwMjE1MTg0N1owJTEjMCEGA1UEAwwadW5mb3JtZWQtbWF5YWFy\nY2gtc3RyYWl0ZW4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCR8+O6\n7eLuTHatAQNzOrJiCjqeiiH/99YcRi/+ojPn74SGm+1cqcirC+CefykCVzylTguD\n1gDd2y0fwNd8U+1nhaTzoLy4q4vHHUhj7WPT50CmOZ55aaLykuUAGLniASCr/A5j\notV0AAADo+P8D2KNhFNXzBivTAlmoswNKylQmltnPbamO5gGH17bo7BRXmz3Ypd4\nP7SQVreVNZw1UMBAEzBQ8HdFirnvq+ZKgGnz5DJ0BgIrGJYCFSl8Rp+nFyNhZZEm\nrtKko50LRSx4/Gp3QluufLGNU34aWGzdbDIvlw549FkScO1jV/iJWUQc0kmSnbuV\nINqj2CjGg68XXJ/PAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAEUjSLoszHFz6CSz\nHD/B7iuFibBppC5IWW9L873fTC/NKoRwxvL71bF8yk5cYfy3pNIw1qQaqUrUndL0\nRSEz9t0YqbL6H/LA+lzuT+xiHNbhtc0OZaRT2IO6ozbhSePRr1oqKEJnhpajZpQN\nf0wHv1lM+YRyVLE7b/RqxXKDoD3vNT05lb16cMTdXC/IMF1m3UT8DEXQWVHswjsM\nkreMRpPK7o69f1DkI0H43LYaZHWkb7h7ywjM0SmuLB0M49CXfE2LfCAiSdXJwVju\n0R7UtNOYWGGBC2gc31LYKJArREAiD0Lg1vuvFlqQfl+wthxov51ybh4oQFTqQ/HZ\n/h4tNao=\n-----END CERTIFICATE-----"},"id":"/subscriptions/e2c1b49f-461f-4945-9f7a-798c15ba0901/resourceGroups/assettrackerprod/providers/Microsoft.Devices/IotHubs/assettrackerprodIotHub/certificates/unformed-mayaarch-straiten","name":"unformed-mayaarch-straiten","etag":"ImViMDA4ZjU4LTAwMDAtMGMwMC0wMDAwLTYzMGY3YmMwMDAwMCI=","type":"Microsoft.Devices/IotHubs/Certificates"}
+			*/
+
+			// FIXME: verify
+			await iotHub.certificates.verify(iotHubResourceGroup, iotHubName)
+
+			// TODO: Delete cert after test, because there is a limit of 25 per iothub
+
+			await runner.progress(`IoT`, `Registering device for ${deviceId}`)
+			const deviceCreationResult = await new Promise((resolve, reject) =>
+				registry.create(
+					{
+						deviceId,
+					},
+					(error, result) => {
+						if (error !== undefined && error !== null) return reject(error)
+						resolve(result)
+					},
+				),
+			)
+			await runner.progress(`IoT`, JSON.stringify(deviceCreationResult))
+
 			await runner.progress(
 				`Connecting`,
 				JSON.stringify(
 					{
 						deviceId,
 						iotHub: iotHubHostname,
-						key: certs[deviceId].clientKey,
+						key: certs[deviceId].key,
 						certificate: certs[deviceId].certificate,
 					},
 					null,
@@ -88,8 +111,13 @@ export const deviceStepRunners = ({
 			const connection = await connectDevice({
 				deviceId,
 				iotHub: iotHubHostname,
-				key: certs[deviceId].clientKey,
+				key: certs[deviceId].key,
 				certificate: certs[deviceId].certificate,
+				ca: (
+					await readFile(
+						path.join(process.cwd(), 'data', 'BaltimoreCyberTrustRoot.pem'),
+					)
+				).toString(),
 			})
 
 			connections[deviceId] = connection

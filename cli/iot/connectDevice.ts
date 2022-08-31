@@ -8,11 +8,13 @@ export const connectDevice = async ({
 	iotHub,
 	log,
 	certificate,
+	ca,
 	key,
 }: {
 	deviceId: string
 	iotHub: string
 	certificate: string
+	ca: string
 	key: string
 	log?: (...args: any[]) => void
 }): Promise<MqttClient> =>
@@ -21,6 +23,7 @@ export const connectDevice = async ({
 		const client = connect({
 			host: iotHub,
 			port: 8883,
+			ca,
 			key,
 			cert: certificate,
 			rejectUnauthorized: true,

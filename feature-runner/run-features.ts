@@ -10,6 +10,7 @@ import {
 	storageStepRunners,
 } from '@nordicsemiconductor/e2e-bdd-test-runner'
 import { fromEnv } from '@nordicsemiconductor/from-env'
+import iothub from 'azure-iothub'
 import chalk from 'chalk'
 import program from 'commander'
 import { cliCredentials } from '../cli/cliCredentials.js'
@@ -19,6 +20,25 @@ import { run } from '../cli/process/run.js'
 import { ulid } from '../lib/ulid.js'
 import { deviceStepRunners } from './steps/device.js'
 import { httpApiMockStepRunners } from './steps/httpApiMock.js'
+const { Registry } = iothub
+
+const {
+	resourceGroup,
+	iotHubResourceGroup,
+	iotHubName,
+	mockHTTPStorageAccountName,
+	mockHTTPResourceGroup,
+} = fromEnv({
+	resourceGroup: 'RESOURCE_GROUP',
+	iotHubResourceGroup: 'IOT_HUB_RESOURCE_GROUP',
+	iotHubName: 'IOT_HUB_NAME',
+	mockHTTPStorageAccountName: 'MOCK_HTTP_API_STORAGE_ACCOUNT_NAME',
+	mockHTTPResourceGroup: 'MOCK_API_RESOURCE_GROUP',
+})({
+	MOCK_HTTP_API_STORAGE_ACCOUNT_NAME: 'mockhttpapi',
+	MOCK_API_RESOURCE_GROUP: 'memfault-mock-api',
+	...process.env,
+})
 
 let ran = false
 
@@ -46,24 +66,6 @@ program
 			},
 		) => {
 			ran = true
-
-			const {
-				resourceGroup,
-				iotHubResourceGroup,
-				iotHubName,
-				mockHTTPStorageAccountName,
-				mockHTTPResourceGroup,
-			} = fromEnv({
-				resourceGroup: 'RESOURCE_GROUP',
-				iotHubResourceGroup: 'IOT_HUB_RESOURCE_GROUP',
-				iotHubName: 'IOT_HUB_NAME',
-				mockHTTPStorageAccountName: 'MOCK_HTTP_API_STORAGE_ACCOUNT_NAME',
-				mockHTTPResourceGroup: 'MOCK_API_RESOURCE_GROUP',
-			})({
-				MOCK_HTTP_API_STORAGE_ACCOUNT_NAME: 'mockhttpapi',
-				MOCK_API_RESOURCE_GROUP: 'memfault-mock-api',
-				...process.env,
-			})
 
 			logProgress('Azure', 'Getting credentials...')
 			const { credentials, subscriptionId } = await cliCredentials()
@@ -111,6 +113,18 @@ program
 				iotHubName,
 			)
 			const iotHubHostname = res.properties?.hostName as string
+			const {
+				value: {
+					keyName, //'iothubowner'
+					primaryKey, //: 'ugLZMJFBRBr5gI7+adifhtEBieKPcHPCoHtLBb+zsFQ=',
+				},
+			} = await iotHubClient.iotHubResource
+				.listKeys(iotHubResourceGroup, iotHubName)
+				.next()
+
+			const registry = Registry.fromConnectionString(
+				`HostName=${iotHubHostname};SharedAccessKeyName=${keyName};SharedAccessKey=${primaryKey}`,
+			)
 
 			settings({
 				Subscription: subscriptionId,
@@ -157,6 +171,7 @@ program
 						iotHubHostname,
 						iotHubName,
 						iotHubResourceGroup,
+						registry,
 					}),
 				)
 				.addStepRunners(storageStepRunners())
