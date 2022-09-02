@@ -11,9 +11,9 @@ import {
  * @link https://docs.microsoft.com/en-us/azure/iot-hub/tutorial-x509-self-sign#step-1---create-a-key-for-the-first-certificate
  */
 export const selfSignedCertificate = async ({
-	deviceId,
+	commonName,
 }: {
-	deviceId: string
+	commonName: string
 }): Promise<{
 	certificate: string
 	key: string
@@ -33,7 +33,7 @@ export const selfSignedCertificate = async ({
 	const { csr } = await new Promise<{ csr: string }>((resolve, reject) =>
 		createCSR(
 			{
-				commonName: deviceId,
+				commonName,
 			},
 			(error, result) => {
 				if (error !== undefined && error !== null) return reject(error)
@@ -51,6 +51,7 @@ export const selfSignedCertificate = async ({
 					days: 2,
 					csr,
 					serviceKey: key,
+					commonName,
 				},
 				(error, result) => {
 					if (error !== undefined && error !== null) return reject(error)
@@ -73,3 +74,38 @@ export const selfSignedCertificate = async ({
 		fingerprint,
 	}
 }
+
+export const verificationCert = async ({
+	commonName,
+	privateKey,
+}: {
+	commonName: string
+	privateKey: string
+}): Promise<{ certificate: string }> =>
+	new Promise<{ csr: string }>((resolve, reject) =>
+		createCSR(
+			{
+				commonName,
+			},
+			(error, result) => {
+				if (error !== undefined && error !== null) return reject(error)
+				resolve(result)
+			},
+		),
+	).then(
+		async ({ csr }) =>
+			new Promise((resolve, reject) =>
+				createCertificate(
+					{
+						days: 2,
+						serviceKey: privateKey,
+						commonName,
+						csr,
+					},
+					(error, result) => {
+						if (error !== undefined && error !== null) return reject(error)
+						resolve(result)
+					},
+				),
+			),
+	)

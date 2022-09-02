@@ -156,6 +156,14 @@ program
 				],
 				retry,
 			})
+			const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } =
+				deviceStepRunners({
+					iotHub: iotHubClient,
+					iotHubHostname,
+					iotHubName,
+					iotHubResourceGroup,
+					registry,
+				})
 			runner
 				.addStepRunners(
 					randomStepRunners({
@@ -165,15 +173,7 @@ program
 					}),
 				)
 				.addStepRunners(restStepRunners())
-				.addStepRunners(
-					deviceStepRunners({
-						iotHub: iotHubClient,
-						iotHubHostname,
-						iotHubName,
-						iotHubResourceGroup,
-						registry,
-					}),
-				)
+				.addStepRunners(deviceSteps)
 				.addStepRunners(storageStepRunners())
 				.addStepRunners(
 					(() => {
@@ -195,6 +195,7 @@ program
 
 			try {
 				const { success } = await runner.run()
+				await deviceStepsCleanUp()
 				if (!success) {
 					process.exit(1)
 				}
