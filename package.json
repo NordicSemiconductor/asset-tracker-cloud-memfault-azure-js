@@ -6,9 +6,7 @@
   "scripts": {
     "test": "jest",
     "test:e2e": " npx tsx ./feature-runner/run-features.ts ./features --print-results --progress",
-    "postinstall": "husky install && check-node-version --package",
-    "prepublishOnly": "pinst --disable",
-    "postpublish": "pinst --enable"
+    "prepare": "husky install && check-node-version --package"
   },
   "repository": {
     "type": "git",
