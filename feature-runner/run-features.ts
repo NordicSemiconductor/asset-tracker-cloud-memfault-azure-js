@@ -2,22 +2,14 @@ import { WebSiteManagementClient } from '@azure/arm-appservice'
 import { IotHubClient } from '@azure/arm-iothub'
 import { AzureNamedKeyCredential } from '@azure/core-auth'
 import { TableClient } from '@azure/data-tables'
-import {
-	ConsoleReporter,
-	FeatureRunner,
-	randomStepRunners,
-	restStepRunners,
-	storageStepRunners,
-} from '@nordicsemiconductor/e2e-bdd-test-runner'
+import { consoleReporter, runFolder } from '@nordicsemiconductor/bdd-markdown'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import iothub from 'azure-iothub'
-import chalk from 'chalk'
-import program from 'commander'
+import path from 'path'
 import { cliCredentials } from '../cli/cliCredentials.js'
 import { progress as logProgress } from '../cli/logging'
-import { debug, error, heading, settings } from '../cli/logging.js'
+import { error, heading, settings } from '../cli/logging.js'
 import { run } from '../cli/process/run.js'
-import { ulid } from '../lib/ulid.js'
 import { deviceStepRunners } from './steps/device.js'
 import { httpApiMockStepRunners } from './steps/httpApiMock.js'
 const { Registry } = iothub
@@ -40,176 +32,120 @@ const {
 	...process.env,
 })
 
-let ran = false
-
 export type World = {
 	'httpApiMock:apiEndpoint': string
 }
+logProgress('Azure', 'Getting credentials...')
 
-program
-	.arguments('<featureDir>')
-	.option('-r, --print-results', 'Print results')
-	.option('-p, --progress', 'Print progress')
-	.option('-X, --no-retry', 'Do not retry steps')
-	.action(
-		async (
-			featureDir: string,
-			{
-				printResults,
-				progress,
-				retry,
-			}: {
-				printResults: boolean
-				subscription: string
-				progress: boolean
-				retry: boolean
-			},
-		) => {
-			ran = true
+const { credentials, subscriptionId } = await cliCredentials()
 
-			logProgress('Azure', 'Getting credentials...')
-			const { credentials, subscriptionId } = await cliCredentials()
+const wsClient = new WebSiteManagementClient(credentials, subscriptionId)
+logProgress('Azure', 'Fetching mock API settings')
+const [mockHTTPApiEndpoint, mockHTTPApiSettings] = await Promise.all([
+	wsClient.webApps
+		.get(mockHTTPResourceGroup, `MockHttpAPI`)
+		.then(({ defaultHostName }) => defaultHostName),
+	// FIXME: there seems to be no NPM package to manage Azure function apps
+	run({
+		command: 'az',
+		args: [
+			'functionapp',
+			'config',
+			'appsettings',
+			'list',
+			'-g',
+			mockHTTPResourceGroup,
+			'-n',
+			`MockHttpAPI`,
+		],
+	}).then((res) => JSON.parse(res) as { name: string; value: string }[]),
+])
 
-			const wsClient = new WebSiteManagementClient(credentials, subscriptionId)
-			logProgress('Azure', 'Fetching mock API settings')
-			const [mockHTTPApiEndpoint, mockHTTPApiSettings] = await Promise.all([
-				wsClient.webApps
-					.get(mockHTTPResourceGroup, `MockHttpAPI`)
-					.then(({ defaultHostName }) => defaultHostName),
-				// FIXME: there seems to be no NPM package to manage Azure function apps
-				run({
-					command: 'az',
-					args: [
-						'functionapp',
-						'config',
-						'appsettings',
-						'list',
-						'-g',
-						mockHTTPResourceGroup,
-						'-n',
-						`MockHttpAPI`,
-					],
-				}).then((res) => JSON.parse(res) as { name: string; value: string }[]),
-			])
+const mockHTTPStorageAccessKey = mockHTTPApiSettings.find(
+	({ name }) => name === 'STORAGE_ACCESS_KEY',
+)?.value as string
 
-			const mockHTTPStorageAccessKey = mockHTTPApiSettings.find(
-				({ name }) => name === 'STORAGE_ACCESS_KEY',
-			)?.value as string
+if (mockHTTPApiEndpoint === undefined) {
+	error(`Could not determine mock HTTP API endpoint!`)
+	process.exit(1)
+}
+if (mockHTTPStorageAccessKey === undefined) {
+	error(`Could not determine mock HTTP API storage access key!`)
+	process.exit(1)
+}
+const mockHTTPApiEndpointUrl = `https://${mockHTTPApiEndpoint}/`
 
-			if (mockHTTPApiEndpoint === undefined) {
-				error(`Could not determine mock HTTP API endpoint!`)
-				process.exit(1)
-			}
-			if (mockHTTPStorageAccessKey === undefined) {
-				error(`Could not determine mock HTTP API storage access key!`)
-				process.exit(1)
-			}
-			const mockHTTPApiEndpointUrl = `https://${mockHTTPApiEndpoint}/`
+logProgress('Azure', 'Fetching IoT Hub info')
+const iotHubClient = new IotHubClient(credentials, subscriptionId)
+const res = await iotHubClient.iotHubResource.get(
+	iotHubResourceGroup,
+	iotHubName,
+)
+const iotHubHostname = res.properties?.hostName as string
+const {
+	value: {
+		keyName, //'iothubowner'
+		primaryKey, //: 'ugLZMJFBRBr5gI7+adifhtEBieKPcHPCoHtLBb+zsFQ=',
+	},
+} = await iotHubClient.iotHubResource
+	.listKeys(iotHubResourceGroup, iotHubName)
+	.next()
 
-			logProgress('Azure', 'Fetching IoT Hub info')
-			const iotHubClient = new IotHubClient(credentials, subscriptionId)
-			const res = await iotHubClient.iotHubResource.get(
-				iotHubResourceGroup,
-				iotHubName,
+const registry = Registry.fromConnectionString(
+	`HostName=${iotHubHostname};SharedAccessKeyName=${keyName};SharedAccessKey=${primaryKey}`,
+)
+
+settings({
+	Subscription: subscriptionId,
+	'Resource Group': resourceGroup,
+	'Mock HTTP API endpoint': mockHTTPApiEndpointUrl,
+	'IoT Hub Resource Group': iotHubResourceGroup,
+	'IoT Hub Name': iotHubName,
+	'IoT Hub Endpoint': iotHubHostname,
+})
+
+const world: World = {
+	'httpApiMock:apiEndpoint': `${mockHTTPApiEndpointUrl}api/`,
+} as const
+heading('World')
+settings(world)
+
+const runner = await runFolder<World>({
+	name: 'Azure Memfault Integration',
+	folder: path.join(process.cwd(), 'features'),
+})
+const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } = deviceStepRunners({
+	iotHub: iotHubClient,
+	iotHubHostname,
+	iotHubName,
+	iotHubResourceGroup,
+	registry,
+})
+runner.addStepRunners(...deviceSteps).addStepRunners(
+	...(() => {
+		const tableClient = (tableName: string) =>
+			new TableClient(
+				`https://${mockHTTPStorageAccountName}.table.core.windows.net`,
+				tableName,
+				new AzureNamedKeyCredential(
+					mockHTTPStorageAccountName,
+					mockHTTPStorageAccessKey,
+				),
 			)
-			const iotHubHostname = res.properties?.hostName as string
-			const {
-				value: {
-					keyName, //'iothubowner'
-					primaryKey, //: 'ugLZMJFBRBr5gI7+adifhtEBieKPcHPCoHtLBb+zsFQ=',
-				},
-			} = await iotHubClient.iotHubResource
-				.listKeys(iotHubResourceGroup, iotHubName)
-				.next()
+		return httpApiMockStepRunners({
+			requestsClient: tableClient('Requests'),
+			responsesClient: tableClient('Responses'),
+		})
+	})(),
+)
 
-			const registry = Registry.fromConnectionString(
-				`HostName=${iotHubHostname};SharedAccessKeyName=${keyName};SharedAccessKey=${primaryKey}`,
-			)
+const testResult = await runner.run(world)
 
-			settings({
-				Subscription: subscriptionId,
-				'Resource Group': resourceGroup,
-				'Mock HTTP API endpoint': mockHTTPApiEndpointUrl,
-				'IoT Hub Resource Group': iotHubResourceGroup,
-				'IoT Hub Name': iotHubName,
-				'IoT Hub Endpoint': iotHubHostname,
-			})
+consoleReporter(testResult, console.log)
 
-			const world: World = {
-				'httpApiMock:apiEndpoint': `${mockHTTPApiEndpointUrl}api/`,
-			} as const
-			heading('World')
-			settings(world)
-			if (!retry) {
-				debug('Test Runner:', chalk.red('❌'), chalk.red('Retries disabled.'))
-			}
+await deviceStepsCleanUp()
 
-			const runner = new FeatureRunner<World>(world, {
-				dir: featureDir,
-				reporters: [
-					new ConsoleReporter({
-						printResults,
-						printProgress: progress,
-						printProgressTimestamps: true,
-						printSummary: true,
-					}),
-				],
-				retry,
-			})
-			const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } =
-				deviceStepRunners({
-					iotHub: iotHubClient,
-					iotHubHostname,
-					iotHubName,
-					iotHubResourceGroup,
-					registry,
-				})
-			runner
-				.addStepRunners(
-					randomStepRunners({
-						generators: {
-							ULID: ulid,
-						},
-					}),
-				)
-				.addStepRunners(restStepRunners())
-				.addStepRunners(deviceSteps)
-				.addStepRunners(storageStepRunners())
-				.addStepRunners(
-					(() => {
-						const tableClient = (tableName: string) =>
-							new TableClient(
-								`https://${mockHTTPStorageAccountName}.table.core.windows.net`,
-								tableName,
-								new AzureNamedKeyCredential(
-									mockHTTPStorageAccountName,
-									mockHTTPStorageAccessKey,
-								),
-							)
-						return httpApiMockStepRunners({
-							requestsClient: tableClient('Requests'),
-							responsesClient: tableClient('Responses'),
-						})
-					})(),
-				)
-
-			try {
-				const { success } = await runner.run()
-				await deviceStepsCleanUp()
-				if (!success) {
-					process.exit(1)
-				}
-				process.exit()
-			} catch (e) {
-				error('Running the features failed!')
-				error((e as Error).message)
-				process.exit(1)
-			}
-		},
-	)
-	.parse(process.argv)
-
-if (!ran) {
-	program.outputHelp()
+if (!testResult.ok) {
+	error('Running the features failed!')
 	process.exit(1)
 }

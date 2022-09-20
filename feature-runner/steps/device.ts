@@ -1,11 +1,13 @@
 import { CertificateDescription, IotHubClient } from '@azure/arm-iothub'
 import {
-	InterpolatedStep,
-	regexGroupMatcher,
-	regexMatcher,
-	StepRunnerFunc,
-} from '@nordicsemiconductor/e2e-bdd-test-runner'
+	codeBlockOrThrow,
+	matchGroups,
+	noMatch,
+	StepRunner,
+	StepRunResult,
+} from '@nordicsemiconductor/bdd-markdown'
 import { randomWords } from '@nordicsemiconductor/random-words'
+import { Type } from '@sinclair/typebox'
 import { Registry } from 'azure-iothub'
 import * as chai from 'chai'
 import { expect } from 'chai'
@@ -51,15 +53,24 @@ export const deviceStepRunners = ({
 	iotHubResourceGroup: string
 	registry: Registry
 }): {
-	steps: ((step: InterpolatedStep) => StepRunnerFunc<any> | false)[]
+	steps: StepRunner<Record<string, unknown>>[]
 	cleanUp: () => Promise<void>
 } => {
 	const connections = {} as Record<string, MqttClient>
 	const certificates: CertificateDescription[] = []
 
+	const store: Record<string, any> = {}
+
 	return {
 		steps: [
-			regexMatcher(/^I connect a device$/)(async (_, __, runner) => {
+			async ({
+				step,
+				log: {
+					step: { progress },
+				},
+			}) => {
+				if (!/^I connect a device$/.test(step.title)) return noMatch
+
 				// FIXME: see https://docs.microsoft.com/en-us/azure/iot-hub/tutorial-x509-self-sign for creating test certificates
 				const deviceId = (await randomWords({ numWords: 3 })).join('-')
 
@@ -67,7 +78,7 @@ export const deviceStepRunners = ({
 					certs[deviceId] ??
 					(await selfSignedCertificate({ commonName: deviceId }))
 
-				await runner.progress(`IoT`, `Registering certificate for ${deviceId}`)
+				progress(`IoT`, `Registering certificate for ${deviceId}`)
 				const certRegistrationRes = await iotHub.certificates.createOrUpdate(
 					iotHubResourceGroup,
 					iotHubName,
@@ -79,7 +90,7 @@ export const deviceStepRunners = ({
 						verified: true,
 					} as any,
 				)
-				await runner.progress(`IoT`, JSON.stringify(certRegistrationRes))
+				progress(`IoT`, JSON.stringify(certRegistrationRes))
 				certificates.push(certRegistrationRes)
 
 				const verificationCodeRes =
@@ -92,14 +103,14 @@ export const deviceStepRunners = ({
 
 				const verificationCode =
 					verificationCodeRes.properties?.verificationCode ?? ''
-				await runner.progress(`IoT`, `Verification code: ${verificationCode}`)
+				progress(`IoT`, `Verification code: ${verificationCode}`)
 
 				const verCert = await verificationCert({
 					commonName: verificationCode,
 					privateKey: certs[deviceId].key,
 				})
 
-				await runner.progress(`IoT`, `Verifying certificate for ${deviceId}`)
+				progress(`IoT`, `Verifying certificate for ${deviceId}`)
 				const verifyRes = await iotHub.certificates.verify(
 					iotHubResourceGroup,
 					iotHubName,
@@ -112,9 +123,9 @@ export const deviceStepRunners = ({
 						].join('\n'),
 					},
 				)
-				await runner.progress(`IoT`, JSON.stringify(verifyRes))
+				progress(`IoT`, JSON.stringify(verifyRes))
 
-				await runner.progress(`IoT`, `Registering device for ${deviceId}`)
+				progress(`IoT`, `Registering device for ${deviceId}`)
 				const deviceCreationResult = await new Promise((resolve, reject) =>
 					registry.create(
 						{
@@ -126,9 +137,9 @@ export const deviceStepRunners = ({
 						},
 					),
 				)
-				await runner.progress(`IoT`, JSON.stringify(deviceCreationResult))
+				progress(`IoT`, JSON.stringify(deviceCreationResult))
 
-				await runner.progress(
+				progress(
 					`Connecting`,
 					JSON.stringify(
 						{
@@ -154,118 +165,161 @@ export const deviceStepRunners = ({
 				})
 
 				connections[deviceId] = connection
-				return deviceId
-			}),
-			regexGroupMatcher(
-				/^the (?:device|tracker) "(?<deviceId>[^"]+)" updates its reported state with$/,
-			)(async ({ deviceId }, step) => {
-				if (step.interpolatedArgument === undefined) {
-					throw new Error('Must provide argument!')
+
+				return {
+					matched: true,
+					result: deviceId,
 				}
-				const reported = JSON.parse(step.interpolatedArgument)
-				const connection = connections[deviceId]
+			},
+			async ({ step }): Promise<StepRunResult> => {
+				const match = matchGroups(
+					Type.Object({
+						deviceId: Type.String({ minLength: 1 }),
+					}),
+				)(
+					/^the (?:device|tracker) "(?<deviceId>[^"]+)" updates its reported state with$/,
+					step.title,
+				)
+				if (match === null) return noMatch
+
+				const reported = JSON.parse(codeBlockOrThrow(step).code)
+				const connection = connections[match.deviceId]
 				connection.publish(
 					deviceTopics.updateTwinReported(ulid()),
 					JSON.stringify(reported),
 				)
-			}),
-			regexGroupMatcher(
-				/^the (?:device|tracker) "(?<deviceId>[^"]+)" publishes this message to the topic (?<topic>.+)$/,
-			)(async ({ deviceId, topic }, step) => {
-				if (step.interpolatedArgument === undefined) {
-					throw new Error('Must provide argument!')
-				}
-				const message = JSON.parse(step.interpolatedArgument)
-				const connection = connections[deviceId]
-				connection.publish(topic, JSON.stringify(message))
-			}),
-			regexGroupMatcher(
-				/^the (?:device|tracker) "(?<deviceId>[^"]+)" receives (?<messageCount>a|[1-9][0-9]*) (?<raw>raw )?messages? on the topic (?<topic>[^ ]+)(?: into "(?<storeName>[^"]+)")?$/,
-			)(
-				async (
-					{ deviceId, messageCount, raw, topic, storeName },
-					_,
-					runner,
-				) => {
-					if (!topic.startsWith(`devices/${deviceId}/messages/devicebound`))
-						throw new Error(
-							`Must subscribe to the device topic devices/${deviceId}/messages/devicebound`,
-						)
-					const connection = connections[deviceId]
-					const isRaw = raw !== undefined
-
-					const expectedMessageCount =
-						messageCount === 'a' ? 1 : parseInt(messageCount, 10)
-					const messages: (Record<string, any> | string)[] = []
-
-					return new Promise((resolve, reject) => {
-						const timeout = setTimeout(() => {
-							reject(
-								new Error(
-									`timed out with ${
-										expectedMessageCount - messages.length
-									} message${
-										expectedMessageCount > 1 ? 's' : ''
-									} yet to receive.`,
-								),
-							)
-						}, 60 * 1000)
-
-						// @see https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-mqtt-support#receiving-cloud-to-device-messages
-						connection.subscribe(`devices/${deviceId}/messages/devicebound/#`)
-
-						const done = (result: any) => {
-							connection.unsubscribe(
-								`devices/${deviceId}/messages/devicebound/#`,
-							)
-							resolve(result)
-						}
-
-						connection.on('message', async (t: string, message: Buffer) => {
-							if (!matchDeviceBoundTopic(topic, t)) return
-							await runner.progress(`Iot`, JSON.stringify(message))
-							const m = isRaw
-								? message.toString('hex')
-								: JSON.parse(message.toString('utf-8'))
-							messages.push(m)
-							if (messages.length === expectedMessageCount) {
-								clearTimeout(timeout)
-
-								const result = messages.length > 1 ? messages : messages[0]
-
-								if (storeName !== undefined) runner.store[storeName] = result
-
-								if (isRaw) {
-									if (messages.length > 1)
-										return done(
-											messages.map(
-												(m) =>
-													`(${
-														Buffer.from(m as string, 'hex').length
-													} bytes of data)`,
-											),
-										)
-									return done(
-										`(${
-											Buffer.from(messages[0] as string, 'hex').length
-										} bytes of data)`,
-									)
-								}
-
-								return done(result)
-							}
-						})
-					})
+			},
+			async ({ step }): Promise<StepRunResult> => {
+				const match = matchGroups(
+					Type.Object({
+						deviceId: Type.String({ minLength: 1 }),
+						topic: Type.String({ minLength: 1 }),
+					}),
+				)(
+					/^the (?:device|tracker) "(?<deviceId>[^"]+)" publishes this message to the topic (?<topic>.+)$/,
+					step.title,
+				)
+				if (match === null) return noMatch
+				const message = JSON.parse(codeBlockOrThrow(step).code)
+				const connection = connections[match.deviceId]
+				connection.publish(match.topic, JSON.stringify(message))
+			},
+			async ({
+				step,
+				log: {
+					scenario: { progress },
 				},
-			),
-			regexGroupMatcher(
-				/^the (?<desiredOrReported>desired|reported) state of the (?:device|tracker) "(?<deviceId>[^"]+)" (?:should )?(?<equalOrMatch>equals?|match(?:es)?)$/,
-			)(async ({ desiredOrReported, deviceId, equalOrMatch }, step) => {
-				if (step.interpolatedArgument === undefined) {
-					throw new Error('Must provide argument!')
-				}
-				const j = JSON.parse(step.interpolatedArgument)
+			}) => {
+				const match = matchGroups(
+					Type.Object({
+						deviceId: Type.String({ minLength: 1 }),
+						topic: Type.String({ minLength: 1 }),
+
+						messageCount: Type.Integer({ minimum: 1 }),
+						raw: Type.Optional(Type.String({ minLength: 1 })),
+						storeName: Type.Optional(Type.String({ minLength: 1 })),
+					}),
+					{ messageCount: (s) => parseInt(s, 10) },
+				)(
+					/^the (?:device|tracker) "(?<deviceId>[^"]+)" receives (?<messageCount>a|[1-9][0-9]*) (?<raw>raw )?messages? on the topic (?<topic>[^ ]+)(?: into "(?<storeName>[^"]+)")?$/,
+					step.title,
+				)
+				if (match === null) return noMatch
+
+				const {
+					topic,
+					deviceId,
+					raw,
+					messageCount: expectedMessageCount,
+					storeName,
+				} = match
+
+				if (!topic.startsWith(`devices/${deviceId}/messages/devicebound`))
+					throw new Error(
+						`Must subscribe to the device topic devices/${deviceId}/messages/devicebound`,
+					)
 				const connection = connections[deviceId]
+				const isRaw = raw !== undefined
+
+				const messages: (Record<string, any> | string)[] = []
+
+				return new Promise((resolve, reject) => {
+					const timeout = setTimeout(() => {
+						reject(
+							new Error(
+								`timed out with ${
+									expectedMessageCount - messages.length
+								} message${
+									expectedMessageCount > 1 ? 's' : ''
+								} yet to receive.`,
+							),
+						)
+					}, 60 * 1000)
+
+					// @see https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-mqtt-support#receiving-cloud-to-device-messages
+					connection.subscribe(`devices/${deviceId}/messages/devicebound/#`)
+
+					const done = (result: any) => {
+						connection.unsubscribe(`devices/${deviceId}/messages/devicebound/#`)
+						resolve(result)
+					}
+
+					connection.on('message', async (t: string, message: Buffer) => {
+						if (!matchDeviceBoundTopic(topic, t)) return
+						progress(`Iot`, JSON.stringify(message))
+						const m = isRaw
+							? message.toString('hex')
+							: JSON.parse(message.toString('utf-8'))
+						messages.push(m)
+						if (messages.length === expectedMessageCount) {
+							clearTimeout(timeout)
+
+							const result = messages.length > 1 ? messages : messages[0]
+
+							if (storeName !== undefined) store[storeName] = result
+
+							if (isRaw) {
+								if (messages.length > 1)
+									return done(
+										messages.map(
+											(m) =>
+												`(${
+													Buffer.from(m as string, 'hex').length
+												} bytes of data)`,
+										),
+									)
+								return done(
+									`(${
+										Buffer.from(messages[0] as string, 'hex').length
+									} bytes of data)`,
+								)
+							}
+
+							return done(result)
+						}
+					})
+				})
+			},
+			async ({ step }) => {
+				enum ShadowType {
+					desired = 'desired',
+					reported = 'reported',
+				}
+				const match = matchGroups(
+					Type.Object({
+						desiredOrReported: Type.Enum(ShadowType),
+						deviceId: Type.String({ minLength: 1 }),
+						equalOrMatch: Type.Optional(Type.String({ minLength: 1 })),
+					}),
+				)(
+					/^the (?<desiredOrReported>desired|reported) state of the (?:device|tracker) "(?<deviceId>[^"]+)" (?:should )?(?<equalOrMatch>equals?|match(?:es)?)$/,
+					step.title,
+				)
+
+				if (match === null) return noMatch
+
+				const j = JSON.parse(codeBlockOrThrow(step).code)
+				const connection = connections[match.deviceId]
 				const state: Record<string, any> = await new Promise(
 					(resolve, reject) => {
 						const getTwinPropertiesRequestId = ulid()
@@ -295,14 +349,14 @@ export const deviceStepRunners = ({
 						})
 					},
 				)
-				const fragment = state[desiredOrReported]
-				if (equalOrMatch.startsWith('match')) {
+				const fragment = state[match.desiredOrReported]
+				if ((match.equalOrMatch ?? '').startsWith('match')) {
 					expect(fragment).to.containSubset(j)
 				} else {
 					expect(fragment).to.deep.equal(j)
 				}
 				return state
-			}),
+			},
 		],
 		cleanUp: async () => {
 			await Promise.all(
