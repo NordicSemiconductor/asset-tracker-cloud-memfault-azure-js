@@ -78,7 +78,7 @@ export const deviceStepRunners = ({
 					certs[deviceId] ??
 					(await selfSignedCertificate({ commonName: deviceId }))
 
-				progress(`IoT`, `Registering certificate for ${deviceId}`)
+				progress(`Registering certificate for ${deviceId}`)
 				const certRegistrationRes = await iotHub.certificates.createOrUpdate(
 					iotHubResourceGroup,
 					iotHubName,
@@ -90,7 +90,7 @@ export const deviceStepRunners = ({
 						verified: true,
 					} as any,
 				)
-				progress(`IoT`, JSON.stringify(certRegistrationRes))
+				progress(JSON.stringify(certRegistrationRes))
 				certificates.push(certRegistrationRes)
 
 				const verificationCodeRes =
@@ -103,14 +103,14 @@ export const deviceStepRunners = ({
 
 				const verificationCode =
 					verificationCodeRes.properties?.verificationCode ?? ''
-				progress(`IoT`, `Verification code: ${verificationCode}`)
+				progress(`Verification code: ${verificationCode}`)
 
 				const verCert = await verificationCert({
 					commonName: verificationCode,
 					privateKey: certs[deviceId].key,
 				})
 
-				progress(`IoT`, `Verifying certificate for ${deviceId}`)
+				progress(`Verifying certificate for ${deviceId}`)
 				const verifyRes = await iotHub.certificates.verify(
 					iotHubResourceGroup,
 					iotHubName,
@@ -123,9 +123,9 @@ export const deviceStepRunners = ({
 						].join('\n'),
 					},
 				)
-				progress(`IoT`, JSON.stringify(verifyRes))
+				progress(JSON.stringify(verifyRes))
 
-				progress(`IoT`, `Registering device for ${deviceId}`)
+				progress(`Registering device for ${deviceId}`)
 				const deviceCreationResult = await new Promise((resolve, reject) =>
 					registry.create(
 						{
@@ -137,7 +137,7 @@ export const deviceStepRunners = ({
 						},
 					),
 				)
-				progress(`IoT`, JSON.stringify(deviceCreationResult))
+				progress(JSON.stringify(deviceCreationResult))
 
 				progress(
 					`Connecting`,
@@ -266,7 +266,7 @@ export const deviceStepRunners = ({
 
 					connection.on('message', async (t: string, message: Buffer) => {
 						if (!matchDeviceBoundTopic(topic, t)) return
-						progress(`Iot`, JSON.stringify(message))
+						progress(JSON.stringify(message))
 						const m = isRaw
 							? message.toString('hex')
 							: JSON.parse(message.toString('utf-8'))
