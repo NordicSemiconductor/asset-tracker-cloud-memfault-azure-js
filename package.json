@@ -34,7 +34,7 @@
     "@azure/functions": "3.2.0",
     "@azure/identity": "3.0.0",
     "@azure/logger": "1.0.3",
-    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.126",
+    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.129",
     "@nordicsemiconductor/bdd-markdown": "3.2.3",
     "@nordicsemiconductor/random-words": "6.0.0",
     "@swc/jest": "0.2.22",
