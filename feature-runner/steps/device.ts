@@ -14,6 +14,7 @@ import { clientFromConnectionString } from 'azure-iot-device-mqtt'
 import { Registry } from 'azure-iothub'
 import * as chai from 'chai'
 import chaiSubset from 'chai-subset'
+import { World } from '../run-features.js'
 chai.use(chaiSubset)
 
 export const deviceStepRunners = ({
@@ -29,7 +30,7 @@ export const deviceStepRunners = ({
 	iotHubResourceGroup: string
 	registry: Registry
 }): {
-	steps: StepRunner<Record<string, unknown>>[]
+	steps: StepRunner<World>[]
 	cleanUp: () => Promise<void>
 } => {
 	const connections = {} as Record<string, Client>
@@ -42,13 +43,14 @@ export const deviceStepRunners = ({
 				log: {
 					step: { progress },
 				},
+				context,
 			}) => {
 				if (!/^I connect a device$/.test(step.title)) return noMatch
 
 				const deviceId = (await randomWords({ numWords: 3 })).join('-')
 
 				progress(`Registering device for ${deviceId}`)
-				const deviceCreationResult = await new Promise((resolve, reject) =>
+				await new Promise((resolve, reject) =>
 					registry.create(
 						{
 							deviceId,
@@ -59,7 +61,6 @@ export const deviceStepRunners = ({
 						},
 					),
 				)
-				progress(JSON.stringify(deviceCreationResult))
 
 				const key = (await registry.get(deviceId)).responseBody.authentication
 					?.symmetricKey?.primaryKey
@@ -67,6 +68,8 @@ export const deviceStepRunners = ({
 
 				progress(`Connecting`, deviceId)
 				connections[deviceId] = clientFromConnectionString(connectionString)
+
+				context.deviceId = deviceId
 
 				return {
 					matched: true,

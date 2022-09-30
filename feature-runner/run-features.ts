@@ -35,6 +35,7 @@ const {
 
 export type World = {
 	'httpApiMock:apiEndpoint': string
+	deviceId?: string
 }
 logProgress('Azure', 'Getting credentials...')
 
