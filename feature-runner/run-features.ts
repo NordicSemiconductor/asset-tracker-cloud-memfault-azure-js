@@ -5,6 +5,7 @@ import { TableClient } from '@azure/data-tables'
 import { consoleReporter, runFolder } from '@nordicsemiconductor/bdd-markdown'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import iothub from 'azure-iothub'
+import chalk from 'chalk'
 import path from 'path'
 import { cliCredentials } from '../cli/cliCredentials.js'
 import { progress as logProgress } from '../cli/logging'
@@ -113,6 +114,11 @@ settings(world)
 const runner = await runFolder<World>({
 	name: 'Azure Memfault Integration',
 	folder: path.join(process.cwd(), 'features'),
+	logObserver: {
+		onProgress: (_, ...progress) =>
+			console.error(...progress.map((s) => chalk.grey(s))),
+		onError: (_, error) => console.error(chalk.red(JSON.stringify(error))),
+	},
 })
 const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } = deviceStepRunners({
 	iotHub: iotHubClient,

@@ -27,8 +27,8 @@ Accepted
 > A typical base64 encoded message is
 > `CAKnAgEDAQpqbnJmOTFucy1mdwlsMC4wLjErODIxOWRlBmh0aGluZ3k5MQtGghneFTnxBKEBjxoAA60jAAAAABkLBQAaABGUABQAAAcAABnr9tXZ`
 
-When the device publishes this message to the topic
-`${deviceId}/memfault/my-projectKey`
+When the device publishes this event with the properties
+`memfault&projectKey=my-projectKey`
 
 ```
 <chunk data>
