@@ -52,7 +52,7 @@ Content-Type: application/json
 
 Given I set the device tag `name` to `My-Device`
 
-Then the mock HTTP API should have been called with a `PATCH` request to
+Soon the mock HTTP API should have been called with a `PATCH` request to
 `api.memfault.com/api/v0/organizations/my-org/projects/my-project/devices/{deviceId}`
 
 ```

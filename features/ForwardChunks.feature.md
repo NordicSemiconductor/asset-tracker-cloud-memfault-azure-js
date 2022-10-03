@@ -34,7 +34,7 @@ When the device publishes this event with the properties
 <chunk data>
 ```
 
-Then the mock HTTP API should have been called with a `POST` request to
+Soon the mock HTTP API should have been called with a `POST` request to
 `chunks.memfault.com/api/v0/chunks/${deviceId}`
 
 ```

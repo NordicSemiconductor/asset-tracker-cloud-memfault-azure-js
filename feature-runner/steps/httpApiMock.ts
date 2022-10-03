@@ -41,7 +41,7 @@ export const httpApiMockStepRunners = ({
 				statusCode: (s) => parseInt(s, 10),
 			},
 		)(
-			/^I enqueue this mock HTTP API response with status code `(?<statusCode>[0-9]+)` for a `(?<method>[A-Z]+)` request to `(?<path>.+)`$/,
+			/^I enqueue this mock HTTP API response with status code `(?<statusCode>[0-9]+)` for a `(?<method>[A-Z]+)` request to `(?<path>[^`]+)`$/,
 			step.title,
 		)
 		if (match === null) return noMatch
@@ -66,7 +66,7 @@ export const httpApiMockStepRunners = ({
 				path: Type.String({ minLength: 1 }),
 			}),
 		)(
-			/^the mock HTTP API should have been called with a `(?<method>[A-Z]+)` request to `(?<path>.+)`$/,
+			/^the mock HTTP API should have been called with a `(?<method>[A-Z]+)` request to `(?<path>[^`]+)`$/,
 			step.title,
 		)
 		if (match === null) return noMatch

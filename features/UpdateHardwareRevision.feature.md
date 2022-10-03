@@ -185,7 +185,7 @@ Given the device updates its reported state to
 }
 ```
 
-Then the mock HTTP API should have been called with a `PATCH` request to
+Soon the mock HTTP API should have been called with a `PATCH` request to
 `api.memfault.com/api/v0/organizations/my-org/projects/my-project/devices/${deviceId}`
 
 ```
@@ -206,7 +206,7 @@ Content-Type: application/json; charset=utf-8
 {"name":"nrf9160dk_nrf9160-v42","primary_software_type":"0.0.0-development-48b1d466fb320151a2c7a2005e58c2cfa74974d2-thingy91_nrf9160_ns-debugWithMemfault"}
 ```
 
-Then the mock HTTP API should have been called with a `PATCH` request to
+Soon the mock HTTP API should have been called with a `PATCH` request to
 `api.memfault.com/api/v0/organizations/my-org/projects/my-project/devices/${deviceId}`
 
 ```
