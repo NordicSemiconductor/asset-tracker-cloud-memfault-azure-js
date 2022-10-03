@@ -128,6 +128,13 @@ const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } = deviceStepRunners({
 	iotHubResourceGroup,
 	registry,
 })
+
+console.log(
+	`https://${mockHTTPStorageAccountName}.table.core.windows.net`,
+	mockHTTPStorageAccountName,
+	mockHTTPStorageAccessKey,
+)
+
 runner.addStepRunners(...deviceSteps).addStepRunners(
 	...(() => {
 		const tableClient = (tableName: string) =>

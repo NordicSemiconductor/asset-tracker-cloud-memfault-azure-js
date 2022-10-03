@@ -18,6 +18,7 @@ chai.use(chaiSubset)
 enum Method {
 	GET = 'GET',
 	POST = 'POST',
+	PATCH = 'PATCH',
 	PUT = 'PUT',
 	DELETE = 'DELETE',
 }
@@ -72,9 +73,11 @@ export const httpApiMockStepRunners = ({
 
 		let expectedBody: Record<string, any> | undefined = undefined
 		let expectedHeaders: Record<string, string> | undefined = undefined
+		let isJSON = false
 		if (step.codeBlock !== undefined) {
 			const { body, headers } = splitMockResponse(step.codeBlock.code)
-			expectedBody = JSON.parse(body)
+			isJSON = headers['Content-Type']?.includes('application/json')
+			expectedBody = isJSON ? JSON.parse(body) : body
 			expectedHeaders = headers
 		}
 
@@ -103,7 +106,9 @@ export const httpApiMockStepRunners = ({
 		for await (const request of res) {
 			try {
 				if (expectedBody !== undefined) {
-					const actual = JSON.parse(request.body ?? '{}')
+					const actual = isJSON
+						? JSON.parse(request.body ?? '{}')
+						: request.body
 					expect(actual).to.deep.equal(expectedBody)
 				}
 				if (expectedHeaders !== undefined) {

@@ -173,7 +173,7 @@ Content-Type: application/json
 
 ## Update the Thing shadow of the device
 
-Given I update the Thing reported shadow to
+Given the device updates its reported state to
 
 ```
 {

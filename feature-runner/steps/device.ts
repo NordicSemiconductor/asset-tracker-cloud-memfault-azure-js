@@ -17,6 +17,32 @@ import chaiSubset from 'chai-subset'
 import { World } from '../run-features.js'
 chai.use(chaiSubset)
 
+enum TwinState {
+	desired = 'desired',
+	reported = 'reported',
+}
+
+const updateTwin = async (
+	registry: Registry,
+	deviceId: string,
+	update: Record<string, any>,
+) => {
+	const res = await registry.getTwin(deviceId)
+	const {
+		responseBody: { tags, properties, etag },
+	} = res
+
+	await registry.updateTwin(
+		deviceId,
+		{
+			tags,
+			properties,
+			...update,
+		},
+		etag,
+	)
+}
+
 export const deviceStepRunners = ({
 	iotHub,
 	iotHubHostname,
@@ -76,47 +102,64 @@ export const deviceStepRunners = ({
 					result: deviceId,
 				}
 			},
-			async ({ step }): Promise<StepRunResult> => {
-				const match = matchGroups(
-					Type.Object({
-						deviceId: Type.String({ minLength: 1 }),
-					}),
-				)(
-					/^the (?:device|tracker) "(?<deviceId>[^"]+)" updates its reported state with$/,
-					step.title,
-				)
-				if (match === null) return noMatch
-
-				const reported = JSON.parse(codeBlockOrThrow(step).code)
-				const connection = connections[match.deviceId]
-				const twin = await connection.getTwin()
-				await twin.properties.reported.update(reported)
-			},
 			async ({
 				step,
 				log: {
 					step: { error },
 				},
+				context,
 			}): Promise<StepRunResult> => {
 				const match = matchGroups(
 					Type.Object({
-						deviceId: Type.String({ minLength: 1 }),
 						properties: Type.Optional(Type.String({ minLength: 1 })),
 					}),
 				)(
-					/^the (?:device|tracker) "(?<deviceId>[^"]+)" publishes this event(?: with the properties `(?<properties>[^`]+)`)$/,
+					/^the device publishes this event(?: with the properties `(?<properties>[^`]+)`)$/,
 					step.title,
 				)
 				if (match === null) return noMatch
-				const { deviceId, properties } = match
-				const message = JSON.parse(codeBlockOrThrow(step).code)
-				const connection = connections[deviceId]
+				const { properties } = match
+				const message = codeBlockOrThrow(step).code
+				const connection = connections[context.deviceId ?? '']
 				const m = new Message(message)
 				if (properties !== undefined) {
 					const props = new URLSearchParams(properties)
 					props.forEach((value, name) => m.properties.add(name, value))
 				}
 				connection.sendEvent(m).catch(error)
+			},
+			async ({ step, context }): Promise<StepRunResult> => {
+				const match = matchGroups(
+					Type.Object({
+						name: Type.String({ minLength: 1 }),
+						value: Type.String({ minLength: 1 }),
+					}),
+				)(
+					/^I set the device tag `(?<name>[^`]+)` to `(?<value>[^`]+)`$/,
+					step.title,
+				)
+				if (match === null) return noMatch
+				const { name, value } = match
+				await updateTwin(registry, context.deviceId as string, {
+					tags: { [name]: value },
+				})
+			},
+			async ({ step, context }): Promise<StepRunResult> => {
+				const match = matchGroups(
+					Type.Object({
+						twinState: Type.Enum(TwinState),
+					}),
+				)(
+					/^the device updates its (?<twinState>reported|desired) state to$/,
+					step.title,
+				)
+				if (match === null) return noMatch
+
+				const state = JSON.parse(codeBlockOrThrow(step).code)
+				const { twinState } = match
+				await updateTwin(registry, context.deviceId as string, {
+					properties: { [twinState]: state },
+				})
 			},
 		],
 		cleanUp: async () => {
