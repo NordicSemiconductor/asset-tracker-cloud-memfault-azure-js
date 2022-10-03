@@ -16,7 +16,7 @@ import { promises as fs, readFileSync, statSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { debug, progress } from '../cli/logging.js'
-import { run } from '../cli/process/run.js'
+import { run } from '../cli/run.js'
 import { flattenDependencies } from './flattenDependencies.js'
 import { copy, copyFile } from './lib/copy.js'
 
