@@ -47,13 +47,13 @@ export const deviceStepRunners = ({
 	iotHub,
 	iotHubHostname,
 	iotHubName,
-	iotHubResourceGroup,
+	resourceGroup,
 	registry,
 }: {
 	iotHub: IotHubClient
 	iotHubHostname: string
 	iotHubName: string
-	iotHubResourceGroup: string
+	resourceGroup: string
 	registry: Registry
 }): {
 	steps: StepRunner<World>[]
@@ -166,7 +166,7 @@ export const deviceStepRunners = ({
 			await Promise.all(
 				certificates.map(async (cert) =>
 					iotHub.certificates.delete(
-						iotHubResourceGroup,
+						resourceGroup,
 						iotHubName,
 						cert.name as string,
 						cert.etag as string,

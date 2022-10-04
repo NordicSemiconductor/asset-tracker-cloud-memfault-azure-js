@@ -17,13 +17,11 @@ const { Registry } = iothub
 
 const {
 	resourceGroup,
-	iotHubResourceGroup,
 	iotHubName,
 	mockHTTPStorageAccountName,
 	mockHTTPResourceGroup,
 } = fromEnv({
 	resourceGroup: 'RESOURCE_GROUP',
-	iotHubResourceGroup: 'IOT_HUB_RESOURCE_GROUP',
 	iotHubName: 'IOT_HUB_NAME',
 	mockHTTPStorageAccountName: 'MOCK_HTTP_API_STORAGE_ACCOUNT_NAME',
 	mockHTTPResourceGroup: 'MOCK_API_RESOURCE_GROUP',
@@ -79,19 +77,14 @@ const mockHTTPApiEndpointUrl = `https://${mockHTTPApiEndpoint}/`
 
 logProgress('Azure', 'Fetching IoT Hub info')
 const iotHubClient = new IotHubClient(credentials, subscriptionId)
-const res = await iotHubClient.iotHubResource.get(
-	iotHubResourceGroup,
-	iotHubName,
-)
+const res = await iotHubClient.iotHubResource.get(resourceGroup, iotHubName)
 const iotHubHostname = res.properties?.hostName as string
 const {
 	value: {
 		keyName, //'iothubowner'
 		primaryKey, //: 'ugLZMJFBRBr5gI7+adifhtEBieKPcHPCoHtLBb+zsFQ=',
 	},
-} = await iotHubClient.iotHubResource
-	.listKeys(iotHubResourceGroup, iotHubName)
-	.next()
+} = await iotHubClient.iotHubResource.listKeys(resourceGroup, iotHubName).next()
 
 const registry = Registry.fromConnectionString(
 	`HostName=${iotHubHostname};SharedAccessKeyName=${keyName};SharedAccessKey=${primaryKey}`,
@@ -101,7 +94,7 @@ settings({
 	Subscription: subscriptionId,
 	'Resource Group': resourceGroup,
 	'Mock HTTP API endpoint': mockHTTPApiEndpointUrl,
-	'IoT Hub Resource Group': iotHubResourceGroup,
+	'IoT Hub Resource Group': resourceGroup,
 	'IoT Hub Name': iotHubName,
 	'IoT Hub Endpoint': iotHubHostname,
 })
@@ -125,7 +118,7 @@ const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } = deviceStepRunners({
 	iotHub: iotHubClient,
 	iotHubHostname,
 	iotHubName,
-	iotHubResourceGroup,
+	resourceGroup,
 	registry,
 })
 

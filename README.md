@@ -72,17 +72,23 @@ Install the dependencies:
 
 ### Deploy
 
-    az group create -n ${RESOURCE_GROUP:-memfault} -l ${LOCATION:-northeurope}
+> **Note**  
+> This adds the memfault integration to the existing nRF Asset Tracker for Azure
+> resources.
+
     az deployment group create \
-    --mode Complete \
+    --mode Incremental \
     --name manual-deployment \
-    --resource-group ${RESOURCE_GROUP:-memfault} \
+    --resource-group ${RESOURCE_GROUP:-nrfassettracker} \
     --template-file memfault-integration.bicep \
     --parameters \
-        iotHubName=${IOT_HUB_NAME:-nrfassettrackerIotHub} \
-        iotHubResourceGroup=${IOT_HUB_RESOURCE_GROUP:-nrfassettracker} \
-        keyVaultName=${KEY_VAULT_NAME:-MemfaultIntegration} \
-        storageAccountName=${STORAGE_ACCOUNT_NAME:-MemfaultIntegration}
+        appName=${APP_NAME:-nrfassettracker} \
+        keyVaultName=${KEY_VAULT_NAME:-assetTracker} \
+        storageAccountName=${STORAGE_ACCOUNT_NAME:-nrfassettracker}
+
+    # Deploy the function app
+    npx tsx scripts/pack-app.ts
+    az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-nrfassettracker} -n ${APP_NAME:-nrfassettracker}-memfault-integration --src dist/functionapp.zip
 
 ## Configure memfault settings
 
