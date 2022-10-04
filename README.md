@@ -120,7 +120,7 @@ Admin → Organization Auth Tokens in the Memfault UI.
     npx tsx scripts/pack-mock-http-api-app.ts
     az functionapp deployment source config-zip -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI --src dist/mock-http-api.zip
 
-    # Configure Memfault Key vaule parameters
+    # Configure Memfault Key value parameters
     USER_OBJECT_ID=`az ad signed-in-user show --query id -o tsv`
     # Assign 'Key Vault Secrets Officer' permission
     az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 \
