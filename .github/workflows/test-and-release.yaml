@@ -11,7 +11,7 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     # Running CI in clean environment is currently not possible: https://github.com/NordicSemiconductor/asset-tracker-cloud-memfault-azure-js/issues/1
     environment:
