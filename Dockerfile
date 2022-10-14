@@ -17,7 +17,7 @@ RUN \
     # Azure Functions Core Tools, see https://github.com/Azure/azure-functions-core-tools/blob/dev/README.md#linux
     export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true && \
     apt -y install wget && \
-    wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb && \
+    wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb && \
     dpkg -i packages-microsoft-prod.deb && \
     rm packages-microsoft-prod.deb && \
     apt-get -y update && \
