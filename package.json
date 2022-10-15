@@ -42,7 +42,7 @@
     "@types/jest": "29.1.1",
     "@types/node": "18.8.1",
     "azure-iot-device-mqtt": "1.16.0",
-    "azure-iothub": "1.15.0",
+    "azure-iothub": "1.15.1",
     "chai": "4.3.6",
     "chai-subset": "1.6.0",
     "check-node-version": "4.2.1",
