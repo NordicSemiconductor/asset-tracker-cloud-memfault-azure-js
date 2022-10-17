@@ -11,14 +11,13 @@
  * Therefore, the scriptFiles are renamed to .mjs while packaging.
  */
 
-import dependencyTree, { TreeInnerNode } from 'dependency-tree'
-import { promises as fs, readFileSync, statSync } from 'fs'
+import { promises as fs, statSync } from 'fs'
+import { readdir } from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import { debug, progress } from '../cli/logging.js'
 import { run } from '../cli/run.js'
-import { flattenDependencies } from './flattenDependencies.js'
-import { copy, copyFile } from './lib/copy.js'
+import { copy } from './lib/copy.js'
 
 const installDependenciesFromPackageJSON = async ({
 	targetDir,
@@ -53,10 +52,12 @@ export const packageFunctionApp = async ({
 	functions,
 	ignoreFunctions,
 	installDependencies,
+	includeFolders,
 }: {
 	outFileId: string
 	functions?: string[]
 	ignoreFunctions?: string[]
+	includeFolders?: string[]
 	installDependencies?: (_: { targetDir: string }) => Promise<void>
 }): Promise<string> => {
 	const outFile = path.resolve(process.cwd(), 'dist', `${outFileId}.zip`)
@@ -83,6 +84,19 @@ export const packageFunctionApp = async ({
 	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), path.sep))
 	const c = copy(process.cwd(), tempDir)
 
+	// Copy function files and additional folders
+	await Promise.all(
+		[...functions, ...(includeFolders ?? [])].map(async (fn) => {
+			const cDist = copy(
+				path.join(process.cwd(), 'dist', fn),
+				path.join(tempDir, fn),
+			)
+			return readdir(path.join(process.cwd(), 'dist', fn)).then(async (files) =>
+				Promise.all(files.map(async (file) => cDist(file))),
+			)
+		}),
+	)
+
 	// Copy the neccessary files for Azure IoT Hub functions
 	await c('host.json')
 
@@ -94,43 +108,6 @@ export const packageFunctionApp = async ({
 	await (installDependencies ?? installDependenciesFromPackageJSON)({
 		targetDir: tempDir,
 	})
-
-	// Build list of dist files based on scriptFiles of functions and their dependencies
-	progress('Packaging app', 'Copying function dependencies')
-	const functionFiles = (
-		await Promise.all(
-			functions.map(async (f) =>
-				fs
-					.readFile(path.join(process.cwd(), f, 'function.json'), 'utf-8')
-					.then(JSON.parse)
-					.then(({ scriptFile }) => {
-						// dependencyTree does not handle the import / export properly
-						const importRx = /import [^ ]+ from ["']([^"']+)["']/
-						const handler = readFileSync(
-							path.resolve(process.cwd(), f, scriptFile),
-							'utf-8',
-						)
-							.split(os.EOL)
-							.filter((l) => l.startsWith('import'))
-							.map((l) => importRx.exec(l)?.[1]) as string[]
-						const handlerScript = path.resolve(process.cwd(), f, handler[0])
-						const deps = dependencyTree({
-							directory: path.join(process.cwd(), 'dist'),
-							filename: handlerScript,
-							filter: (path) => !path.includes('node_modules'),
-						}) as TreeInnerNode
-						return [handlerScript, ...flattenDependencies(deps)]
-					}),
-			),
-		)
-	).flat()
-
-	// Find all compiled JS files, but exclude some development files
-	await Promise.all(
-		functionFiles.map(async (f) =>
-			copyFile(f, path.join(tempDir, f.replace(process.cwd(), ''))),
-		),
-	)
 
 	// Azure functions expect .mjs files.
 	// @see https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-node?tabs=v2#ecmascript-modules

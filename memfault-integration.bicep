@@ -18,7 +18,6 @@ param memfaultIotEventsConsumerGroupName string = 'memfault'
 param keyVaultName string = 'assetTracker'
 
 var keyVaultSecretsUser = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
-// var uniqueRoleGuidKeyVaultSecretsUser = guid(resourceId('Microsoft.KeyVault/vaults',  keyVaultName), keyVaultSecretsUser, resourceId('Microsoft.KeyVault/vaults', keyVaultName))
 var managedIdentity = '${appName}-memfault-integration-functionapp-identity'
 
 resource iotHub 'Microsoft.Devices/IotHubs@2020-03-01' existing = {
@@ -119,6 +118,14 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
           name: 'IOTHUB_EVENTS_CONNECTION_STRING'
           value: 'Endpoint=${iotHub.properties.eventHubEndpoints.events.endpoint};SharedAccessKeyName=iothubowner;SharedAccessKey=${iotHub.listkeys().value[0].primaryKey};EntityPath=${iotHub.properties.eventHubEndpoints.events.path}'
         }
+        {
+          name: 'KEYVAULT_NAME'
+          value: keyVaultName
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', managedIdentity)).clientId
+        }
       ]
       use32BitWorkerProcess: false
       cors: {
@@ -148,11 +155,22 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' existing = {
   name: keyVaultName
 }
 
+
+//resource keyVaultPermission 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+//  name: guid('Key Vault Secret User', 'memfaultIntegration' , subscription().subscriptionId)
+//  properties: {
+//    roleDefinitionId: keyVaultSecretsUser
+//    principalId: appIdentity.properties.principalId
+//    principalType: 'ServicePrincipal'
+//  }
+//  scope: keyVault
+//}
+
 resource keyVaultPermission 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid('Key Vault Secret User', 'memfaultIntegration' , subscription().subscriptionId)
   properties: {
     roleDefinitionId: keyVaultSecretsUser
-    principalId: appIdentity.properties.principalId
+    principalId: reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', managedIdentity), '2018-11-30').principalId
     principalType: 'ServicePrincipal'
   }
   scope: keyVault

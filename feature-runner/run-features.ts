@@ -122,12 +122,6 @@ const { steps: deviceSteps, cleanUp: deviceStepsCleanUp } = deviceStepRunners({
 	registry,
 })
 
-console.log(
-	`https://${mockHTTPStorageAccountName}.table.core.windows.net`,
-	mockHTTPStorageAccountName,
-	mockHTTPStorageAccessKey,
-)
-
 runner.addStepRunners(...deviceSteps).addStepRunners(
 	...(() => {
 		const tableClient = (tableName: string) =>

@@ -6,6 +6,7 @@ import {
 void packageFunctionApp({
 	outFileId: 'mock-http-api',
 	functions: ['mock-http-api'],
+	includeFolders: ['lib'],
 	installDependencies: installPackagesFromList([
 		'@azure/functions',
 		'@azure/data-tables',

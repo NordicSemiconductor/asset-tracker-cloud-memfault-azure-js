@@ -64,11 +64,23 @@ like to see this feature.
 
 ### Setup
 
-    // FIXME: document
+```bash
+// FIXME: document
+
+# For the Memfault integration
+export STORAGE_ACCOUNT_NAME=...
+
+# Same as used for the nRF Asset Tracker instance
+export RESOURCE_GROUP=...
+export APP_NAME=...
+export KEY_VAULT_NAME=...
+```
 
 Install the dependencies:
 
-    npm ci
+```bash
+npm ci
+```
 
 ### Deploy
 
@@ -76,80 +88,85 @@ Install the dependencies:
 > This adds the memfault integration to the existing nRF Asset Tracker for Azure
 > resources.
 
-    az deployment group create \
-    --mode Incremental \
-    --name manual-deployment \
-    --resource-group ${RESOURCE_GROUP:-nrfassettracker} \
-    --template-file memfault-integration.bicep \
-    --parameters \
-        appName=${APP_NAME:-nrfassettracker} \
-        keyVaultName=${KEY_VAULT_NAME:-assetTracker} \
-        storageAccountName=${STORAGE_ACCOUNT_NAME:-nrfassettracker}
+```bash
+az deployment group create \
+--mode Incremental \
+--name memfault-integration-deployment \
+--resource-group ${RESOURCE_GROUP:-nrfassettracker} \
+--template-file memfault-integration.bicep \
+--parameters \
+    appName=${APP_NAME:-nrfassettracker} \
+    keyVaultName=${KEY_VAULT_NAME:-assetTracker} \
+    storageAccountName=${STORAGE_ACCOUNT_NAME:-nrfassettrackermemfault}
 
-    # Deploy the function app
-    npx tsx scripts/pack-app.ts
-    az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-nrfassettracker} -n ${APP_NAME:-nrfassettracker}-memfault-integration --src dist/functionapp.zip
+# Deploy the function app
+npx tsc
+npx tsx scripts/pack-app.ts
+az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-nrfassettracker} -n ${APP_NAME:-nrfassettracker}-memfault-integration --src dist/functionapp.zip
+```
 
 ## Configure memfault settings
 
 You can retrieve the project settings from the settings page of the Memfault
 dashboard of your organization.
 
-    // FIXME: document / projectKey --value <your Memfault project key>
-    // FIXME: document / organization --value <your organization slug>
-    // FIXME: document / project --value <your project slug>
+```bash
+// FIXME: document / projectKey --value <your Memfault project key>
+// FIXME: document / organization --value <your organization slug>
+// FIXME: document / project --value <your project slug>
+```
 
 The organization auth token can be accessed and managed by Administrators at
 Admin → Organization Auth Tokens in the Memfault UI.
 
-    // FIXME: document / authToken --value <your auth token>
+```bash
+// FIXME: document / authToken --value <your auth token>
+```
 
 ## End-to-end tests
 
 ### Set up the mock API
 
-    # Create a new resource group
-    az group create -n ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -l ${LOCATION:-northeurope}
+```bash
+# Create a new resource group
+az group create -n ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -l ${LOCATION:-northeurope}
 
-    # Create the resources
-    az deployment group create \
-    --mode Complete \
-    --name manual-deployment \
-    --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} \
-    --template-file mock-http-api.bicep \
-    --parameters \
-        storageAccountName=${MOCK_API_STORAGE_ACCOUNT_NAME:-memfaultmockapi}
+# Create the resources
+az deployment group create \
+--mode Complete \
+--name manual-deployment \
+--resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} \
+--template-file mock-http-api.bicep \
+--parameters \
+    storageAccountName=${MOCK_API_STORAGE_ACCOUNT_NAME:-memfaultmockapi}
 
-    # Deploy the function app
-    export MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI | jq -r '.defaultHostName'`
-    echo $MOCK_HTTP_API_ENDPOINT
-    npx tsx scripts/pack-mock-http-api-app.ts
-    az functionapp deployment source config-zip -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI --src dist/mock-http-api.zip
+# Deploy the function app
+export MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI | jq -r '.defaultHostName'`
+echo $MOCK_HTTP_API_ENDPOINT
+npx tsc
+npx tsx scripts/pack-mock-http-api-app.ts
+az functionapp deployment source config-zip -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI --src dist/mock-http-api.zip
 
-    # Configure Memfault Key value parameters
-    USER_OBJECT_ID=`az ad signed-in-user show --query id -o tsv`
-    # Assign 'Key Vault Secrets Officer' permission
-    az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 \
-         --assignee ${USER_OBJECT_ID} \
-         --scope /subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP:-memfault}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME:-MemfaultIntegration}
+# Configure Memfault Key value parameters
+USER_OBJECT_ID=`az ad signed-in-user show --query id -o tsv`
+# Assign 'Key Vault Secrets Officer' permission
+az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 \
+        --assignee ${USER_OBJECT_ID} \
+        --scope /subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP:-memfault}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME:-assetTracker}
 
-    az keyvault secret set --vault-name ${KEY_VAULT_NAME:-MemfaultIntegration} --name  projectKey --value my-projectKey
-    az keyvault secret set --vault-name ${KEY_VAULT_NAME:-MemfaultIntegration} --name  organization --value my-org
-    az keyvault secret set --vault-name ${KEY_VAULT_NAME:-MemfaultIntegration} --name  project --value my-project
-    az keyvault secret set --vault-name ${KEY_VAULT_NAME:-MemfaultIntegration} --name  authToken --value my-authToken
-    az keyvault secret set --vault-name ${KEY_VAULT_NAME:-MemfaultIntegration} --name  apiEndpoint --value $MOCK_HTTP_API_ENDPOINT/api.memfault.com
-    az keyvault secret set --vault-name ${KEY_VAULT_NAME:-MemfaultIntegration} --name  chunksEndpoint --value $MOCK_HTTP_API_ENDPOINT/chunks.memfault.com
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultProjectKey --value my-projectKey
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultOrganization --value my-org
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultProject --value my-project
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultAuthToken --value my-authToken
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultApiEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/api.memfault.com/"
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultChunksEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/chunks.memfault.com/"
 
-    # Observe logs
-    az webapp log tail --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} --name MockHttpAPI
+# Observe Mock API logs
+az webapp log tail --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} --name MockHttpAPI
 
-    # Run the end-to-end tests
-    npm run test:e2e
+# Observe integration logs
+az webapp log tail --resource-group ${RESOURCE_GROUP:-nrfassettracker} --name ${APP_NAME:-nrfassettracker}-memfault-integration
 
-### Deploy app
-
-    npx tsx scripts/pack-app.ts
-    az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-memfault} -n MemfaultIntegration --src dist/functionapp.zip
-
-    # Observe logs
-    az webapp log tail --resource-group ${RESOURCE_GROUP:-memfault} --name MemfaultIntegration
+# Run the end-to-end tests
+npm run test:e2e
+```
