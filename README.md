@@ -158,8 +158,8 @@ az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfa
 az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultOrganization --value my-org
 az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultProject --value my-project
 az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultAuthToken --value my-authToken
-az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultApiEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/api.memfault.com/"
-az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultChunksEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/chunks.memfault.com/"
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultApiEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/api/api.memfault.com/"
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultChunksEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/api/chunks.memfault.com/"
 
 # Observe Mock API logs
 az webapp log tail --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} --name MockHttpAPI
