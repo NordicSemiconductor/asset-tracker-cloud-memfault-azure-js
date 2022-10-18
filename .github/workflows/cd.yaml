@@ -6,7 +6,6 @@ on:
     branches:
       - saga
     paths-ignore:
-      - Dockerfile
       - .github/workflows/test-docker.yaml
       - .github/workflows/publish-docker.yaml
       - .github/workflows/test-and-release.yaml

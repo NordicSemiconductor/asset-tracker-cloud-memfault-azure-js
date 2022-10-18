@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     paths-ignore:
-      - Dockerfile
       - .github/workflows/test-docker.yaml
       - .github/workflows/publish-docker.yaml
       - .github/workflows/cd.yaml
