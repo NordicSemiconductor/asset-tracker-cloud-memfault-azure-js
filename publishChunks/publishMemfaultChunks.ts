@@ -11,9 +11,11 @@ export const publishMemfaultChunks =
 	async ({
 		device,
 		chunk,
+		debug,
 	}: {
 		device: string
 		chunk: Buffer
+		debug?: (...args: any[]) => void
 	}): Promise<ReturnType<typeof apiRequest>> => {
 		const endpoint = new URL(chunksEndpoint ?? 'https://chunks.memfault.com')
 		const base = (endpoint.pathname ?? '').replace(/\+$/, '')
@@ -30,5 +32,6 @@ export const publishMemfaultChunks =
 				},
 			},
 			chunk,
+			debug,
 		)
 	}

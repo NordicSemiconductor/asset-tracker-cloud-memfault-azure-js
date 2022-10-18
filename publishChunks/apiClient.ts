@@ -5,12 +5,13 @@ import { request } from 'https'
 export const apiRequest = async (
 	options: RequestOptions,
 	payload?: string | Buffer,
+	debug?: (...args: any[]) => void,
 ): Promise<{
 	res: IncomingMessage
 	body: string
 }> => {
 	const { method, path } = options
-	console.debug({
+	debug?.({
 		method,
 		hostname: options.hostname,
 		path,
@@ -33,7 +34,7 @@ export const apiRequest = async (
 		if (payload !== undefined) req.write(payload)
 		req.end()
 	})
-	console.debug(
+	debug?.(
 		JSON.stringify({
 			status: res.statusCode,
 			headers: res.headers,

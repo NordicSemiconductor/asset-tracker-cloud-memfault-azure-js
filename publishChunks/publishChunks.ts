@@ -83,6 +83,7 @@ const publishChunksHandler: AzureFunction = async (
 			return c({
 				chunk,
 				device: deviceId,
+				debug: log(context),
 			})
 		}),
 	)
