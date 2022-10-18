@@ -2,7 +2,7 @@ import { AzureFunction, Context } from '@azure/functions'
 import { DefaultAzureCredential } from '@azure/identity'
 import { SecretClient } from '@azure/keyvault-secrets'
 import { fromEnv } from '@nordicsemiconductor/from-env'
-import { log } from '../lib/log.js'
+import { log, logError } from '../lib/log.js'
 import { publishMemfaultChunks } from './publishMemfaultChunks.js'
 
 const config = () =>
@@ -62,10 +62,22 @@ const publishChunksHandler: AzureFunction = async (
 	context: Context,
 	requests: Buffer[],
 ): Promise<void> => {
-	const deviceId =
-		context.bindingData.systemPropertiesArray['iothub-connection-device-id']
+	const deviceId = (context.bindingData?.systemPropertiesArray ?? []).find(
+		(arr: Record<string, any>) =>
+			['Telemetry', 'twinChangeEvents'].includes(arr['iothub-message-source']),
+	)?.['iothub-connection-device-id']
+
 	log(context)({
 		config: await memfaultConfigPromise,
+		context,
+	})
+
+	if (deviceId === undefined) {
+		logError(context)(`Device ID not defined!`)
+		return
+	}
+
+	log(context)({
 		requests: requests.map((request) => ({
 			deviceId,
 			chunkLength: request.length,

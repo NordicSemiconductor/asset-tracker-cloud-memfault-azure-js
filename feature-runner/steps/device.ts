@@ -73,6 +73,12 @@ export const deviceStepRunners = ({
 			}) => {
 				if (!/^I connect a device$/.test(step.title)) return noMatch
 
+				if (context.deviceId !== undefined)
+					return {
+						matched: true,
+						result: context.deviceId,
+					}
+
 				const deviceId = (await randomWords({ numWords: 3 })).join('-')
 
 				progress(`Registering device for ${deviceId}`)

@@ -18,7 +18,7 @@ export const publishMemfaultChunks =
 		debug?: (...args: any[]) => void
 	}): Promise<ReturnType<typeof apiRequest>> => {
 		const endpoint = new URL(chunksEndpoint ?? 'https://chunks.memfault.com')
-		const base = (endpoint.pathname ?? '').replace(/\+$/, '')
+		const base = (endpoint.pathname ?? '').replace(/\/+$/, '')
 		return apiRequest(
 			{
 				hostname: endpoint.hostname,
