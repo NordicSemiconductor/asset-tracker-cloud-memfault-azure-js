@@ -138,14 +138,15 @@ az deployment group create \
 --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} \
 --template-file mock-http-api.bicep \
 --parameters \
-    storageAccountName=${MOCK_API_STORAGE_ACCOUNT_NAME:-memfaultmockapi}
+    storageAccountName=${MOCK_API_STORAGE_ACCOUNT_NAME:-memfaultmockapi} \
+    appName=${MOCK_API_APP_NAME}
 
 # Deploy the function app
-export MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI | jq -r '.defaultHostName'`
+export MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n ${MOCK_API_APP_NAME} | jq -r '.defaultHostName'`
 echo $MOCK_HTTP_API_ENDPOINT
 npx tsc
 npx tsx scripts/pack-mock-http-api-app.ts
-az functionapp deployment source config-zip -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n MockHttpAPI --src dist/mock-http-api.zip
+az functionapp deployment source config-zip -g ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} -n ${MOCK_API_APP_NAME} --src dist/mock-http-api.zip
 
 # Configure Memfault Key value parameters
 USER_OBJECT_ID=`az ad signed-in-user show --query id -o tsv`
@@ -162,7 +163,7 @@ az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfa
 az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultChunksEndpoint --value "https://${MOCK_HTTP_API_ENDPOINT}/api/chunks.memfault.com/"
 
 # Observe Mock API logs
-az webapp log tail --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} --name MockHttpAPI
+az webapp log tail --resource-group ${MOCK_API_RESOURCE_GROUP:-memfault-mock-api} --name ${MOCK_API_APP_NAME}
 
 # Observe integration logs
 az webapp log tail --resource-group ${RESOURCE_GROUP:-nrfassettracker} --name ${APP_NAME:-nrfassettracker}-memfault-integration

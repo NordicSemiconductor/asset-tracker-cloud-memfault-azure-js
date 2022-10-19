@@ -2,6 +2,10 @@
 @minLength(3)
 param storageAccountName string
 
+@description('Specifies the name of the function app, which is globally unique.')
+@minLength(3)
+param appName string
+
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
@@ -29,7 +33,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2019-08-01' = {
 }
 
 resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
-  name: 'MockHttpAPI'
+  name: appName
   location: location
   kind: 'functionapp'
   identity: {

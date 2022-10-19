@@ -169,8 +169,8 @@ export const deviceStepRunners = ({
 			},
 		],
 		cleanUp: async () => {
-			await Promise.all(
-				certificates.map(async (cert) =>
+			await Promise.all([
+				...certificates.map(async (cert) =>
 					iotHub.certificates.delete(
 						resourceGroup,
 						iotHubName,
@@ -178,7 +178,10 @@ export const deviceStepRunners = ({
 						cert.etag as string,
 					),
 				),
-			)
+				...Object.values(connections).map(async (connection) =>
+					connection.close(),
+				),
+			])
 		},
 	}
 }

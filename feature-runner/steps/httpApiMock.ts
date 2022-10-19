@@ -59,7 +59,7 @@ export const httpApiMockStepRunners = ({
 			ttl: Math.round(Date.now() / 1000) + 5 * 60,
 		})
 	},
-	async ({ step }): Promise<StepRunResult> => {
+	async ({ step, log: { step: stepLogger } }): Promise<StepRunResult> => {
 		const match = matchGroups(
 			Type.Object({
 				method: Type.Enum(Method),
@@ -89,6 +89,8 @@ export const httpApiMockStepRunners = ({
 			Date.now() - 5 * 60 * 1000,
 		).toISOString()}'`
 
+		stepLogger.debug(filter)
+
 		const res = requestsClient.listEntities<{
 			partitionKey: string
 			rowKey: string
@@ -113,12 +115,18 @@ export const httpApiMockStepRunners = ({
 				}
 				if (expectedHeaders !== undefined) {
 					const actual = JSON.parse(request.headers ?? '{}')
-					expect(actual).to.containSubset(expectedHeaders)
+					expect(actual).to.containSubset(
+						Object.entries(expectedHeaders).reduce(
+							(lowercased, [k, v]) => ({ ...lowercased, [k.toLowerCase()]: v }),
+							{},
+						),
+					)
 				}
 				await requestsClient.deleteEntity(request.partitionKey, request.rowKey)
 				return
 			} catch (err) {
 				// Ignore this, there could be multiple requests that do not match
+				console.error(err)
 			}
 		}
 		throw new Error('No requests matched.')

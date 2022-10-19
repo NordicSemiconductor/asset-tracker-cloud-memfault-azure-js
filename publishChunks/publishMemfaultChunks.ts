@@ -31,7 +31,7 @@ export const publishMemfaultChunks =
 					'Memfault-Project-Key': projectKey,
 				},
 			},
-			chunk,
+			chunk.toString('binary'),
 			debug,
 		)
 	}

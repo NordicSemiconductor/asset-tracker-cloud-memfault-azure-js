@@ -47,7 +47,7 @@ const mockHTTPAPI: AzureFunction = async (
 			query: JSON.stringify(req.query),
 			methodPathQuery: methodPathQuery,
 			headers: JSON.stringify(req.headers),
-			body: JSON.stringify(req.body),
+			body: req.rawBody,
 		}
 		log(context)({ request })
 		await requestsClient.createEntity(request)
