@@ -1,3 +1,10 @@
+---
+run: only
+retry:
+  initialDelay: 3000
+  delayFactor: 1.5
+---
+
 # Update Nickname
 
 > The `name` Thing attribute should be synchronized to the device `nickname` on
@@ -25,7 +32,7 @@ Content-Type: application/json
     "debugging_manual_resolution": null,
     "debugging_resolution": "normal",
     "description": "",
-    "device_serial": "{deviceId}",
+    "device_serial": "${deviceId}",
     "hardware_version": { "name": "nrf9160dk_nrf9160" },
     "id": 3848748,
     "last_seen": "2022-04-08T13:07:30.016000+00:00",
@@ -53,7 +60,7 @@ Content-Type: application/json
 Given I set the device tag `name` to `My-Device`
 
 Soon the mock HTTP API should have been called with a `PATCH` request to
-`api.memfault.com/api/v0/organizations/my-org/projects/my-project/devices/{deviceId}`
+`api.memfault.com/api/v0/organizations/my-org/projects/my-project/devices/${deviceId}`
 
 ```
 Content-Type: application/json; charset=utf-8

@@ -1,7 +1,8 @@
 ---
 run: only
 retry:
-  initialDelay: 1000
+  initialDelay: 3000
+  delayFactor: 1.5
 ---
 
 # Forward Chunks

@@ -80,16 +80,11 @@ const mockHTTPAPI: AzureFunction = async (
 
 			if (isBinary) {
 				const binaryBody = Buffer.from(response.body as string, 'hex')
-				context.res = result(context)(
-					binaryBody,
-					response.statusCode ?? 200,
-					{
-						'content-type': 'application/octet-stream',
-						'content-length': `${binaryBody.length}`,
-						...headers,
-					},
-					true,
-				)
+				context.res = result(context)(binaryBody, response.statusCode ?? 200, {
+					'content-type': 'application/octet-stream',
+					'content-length': `${binaryBody.length}`,
+					...headers,
+				})
 			} else {
 				context.res = result(context)(
 					response.body ?? '',
@@ -98,7 +93,6 @@ const mockHTTPAPI: AzureFunction = async (
 						'content-length': `${(response.body ?? '').length}`,
 						...headers,
 					},
-					false,
 				)
 			}
 			return

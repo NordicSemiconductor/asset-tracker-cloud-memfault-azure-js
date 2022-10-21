@@ -145,7 +145,7 @@ Content-Type: application/json
     "debugging_manual_resolution": null,
     "debugging_resolution": "normal",
     "description": "",
-    "device_serial": "{deviceId}",
+    "device_serial": "${deviceId}",
     "hardware_version": { "name": "nrf9160dk_nrf9160-v42" },
     "id": 3848748,
     "last_seen": "2022-04-08T13:07:30.016000+00:00",

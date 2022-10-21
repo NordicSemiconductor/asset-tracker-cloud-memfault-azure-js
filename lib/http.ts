@@ -8,12 +8,10 @@ export const result =
 		result: unknown,
 		status = 200,
 		headers?: Record<string, string>,
-		isRaw = false,
 	): {
 		headers: Record<string, string>
 		status: number
 		body: unknown
-		isRaw: boolean
 	} => {
 		// @see https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-node?tabs=v2#response-object
 		const response = {
@@ -24,17 +22,12 @@ export const result =
 			}),
 			status,
 			body: result,
-			isRaw,
+			isRaw: true,
 		}
-		log(context)(
-			[
-				`> Status ${response.status}`,
-				Object.entries(response.headers).map(([k, v]) =>
-					log(context)(`> ${k}: ${v}`),
-				),
-				'',
-				JSON.stringify(result),
-			].join('\n'),
-		)
+		log(context)(`> Status ${response.status}`)
+		for (const [k, v] of Object.entries(response.headers)) {
+			log(context)(`> ${k}: ${v}`)
+		}
+		log(context)(`> ${result}`)
 		return response
 	}
