@@ -62,6 +62,17 @@ const publishChunksHandler: AzureFunction = async (
 	context: Context,
 	requests: Buffer[],
 ): Promise<void> => {
+	log(context)({
+		context,
+	})
+
+	// Check if sent with 'memfault' property
+	const props: Record<string, any> = context.bindingData.propertiesArray?.[0]
+	if (!('memfault' in props)) {
+		log(context)(`Not a memfault request`, { props })
+		return
+	}
+
 	const deviceId = (context.bindingData?.systemPropertiesArray ?? []).find(
 		(arr: Record<string, any>) =>
 			['Telemetry', 'twinChangeEvents'].includes(arr['iothub-message-source']),
@@ -69,7 +80,6 @@ const publishChunksHandler: AzureFunction = async (
 
 	log(context)({
 		config: await memfaultConfigPromise,
-		context,
 	})
 
 	if (deviceId === undefined) {
