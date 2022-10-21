@@ -150,7 +150,13 @@ export const deviceStepRunners = ({
 					tags: { [name]: value },
 				})
 			},
-			async ({ step, context }): Promise<StepRunResult> => {
+			async ({
+				step,
+				context,
+				log: {
+					step: { debug },
+				},
+			}): Promise<StepRunResult> => {
 				const match = matchGroups(
 					Type.Object({
 						twinState: Type.Enum(TwinState),
@@ -163,6 +169,12 @@ export const deviceStepRunners = ({
 
 				const state = JSON.parse(codeBlockOrThrow(step).code)
 				const { twinState } = match
+				debug(
+					context.deviceId as string,
+					JSON.stringify({
+						properties: { [twinState]: state },
+					}),
+				)
 				await updateTwin(registry, context.deviceId as string, {
 					properties: { [twinState]: state },
 				})
