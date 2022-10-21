@@ -2,6 +2,7 @@ import { AzureFunction, Context } from '@azure/functions'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import { memfaultConfig } from '../lib/config.js'
 import { log } from '../lib/log.js'
+import { createMemfaultHardwareVersion } from './createMemfaultHardwareVersion.js'
 import { publishChunks } from './publishChunks.js'
 import { publishDeviceInfo } from './publishDeviceInfo.js'
 import { publishMemfaultChunks } from './publishMemfaultChunks.js'
@@ -19,6 +20,9 @@ const chunkPublisher = (async () =>
 
 const deviceInfoPublisher = (async () =>
 	updateMemfaultDeviceInfo(await memfaultConfigPromise))()
+
+const hardwareVersionCreator = (async () =>
+	createMemfaultHardwareVersion(await memfaultConfigPromise))()
 
 const handler: AzureFunction = async (
 	context: Context,
@@ -38,7 +42,12 @@ const handler: AzureFunction = async (
 
 	// Check if it is a Twin update to the name tag
 	if (props['iothub-message-schema'] === 'twinChangeNotification') {
-		await publishDeviceInfo(context, requests, await deviceInfoPublisher)
+		await publishDeviceInfo(
+			context,
+			requests,
+			await deviceInfoPublisher,
+			await hardwareVersionCreator,
+		)
 		return
 	}
 	log(context)(`Unmatched request`, { props })

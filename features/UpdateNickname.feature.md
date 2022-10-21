@@ -1,5 +1,4 @@
 ---
-run: only
 retry:
   initialDelay: 3000
   delayFactor: 1.5

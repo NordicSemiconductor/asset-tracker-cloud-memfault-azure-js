@@ -1,3 +1,9 @@
+---
+retry:
+  initialDelay: 3000
+  delayFactor: 1.5
+---
+
 # Update Hardware Revisions
 
 > The `dev.v.brdV` Thing shadow attribute should be synchronized to the device
