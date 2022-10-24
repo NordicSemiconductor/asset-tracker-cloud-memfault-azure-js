@@ -17,32 +17,6 @@ import chaiSubset from 'chai-subset'
 import { World } from '../run-features.js'
 chai.use(chaiSubset)
 
-enum TwinState {
-	desired = 'desired',
-	reported = 'reported',
-}
-
-const updateTwin = async (
-	registry: Registry,
-	deviceId: string,
-	update: Record<string, any>,
-) => {
-	const res = await registry.getTwin(deviceId)
-	const {
-		responseBody: { tags, properties, etag },
-	} = res
-
-	await registry.updateTwin(
-		deviceId,
-		{
-			tags,
-			properties,
-			...update,
-		},
-		etag,
-	)
-}
-
 export const deviceStepRunners = ({
 	iotHub,
 	iotHubHostname,
@@ -98,8 +72,26 @@ export const deviceStepRunners = ({
 					?.symmetricKey?.primaryKey
 				const connectionString = `HostName=${iotHubHostname};DeviceId=${deviceId};SharedAccessKey=${key}`
 
-				progress(`Connecting`, deviceId)
-				connections[deviceId] = clientFromConnectionString(connectionString)
+				progress(`Connecting ${deviceId}...`)
+				connections[deviceId] = await new Promise<Client>((resolve, reject) => {
+					const t = setTimeout(() => {
+						reject(new Error(`Timeout!`))
+					}, 10000)
+					const conn = clientFromConnectionString(connectionString)
+					conn.on('connect', () => {
+						clearTimeout(t)
+						resolve(conn)
+					})
+					conn.on('error', (err) => {
+						clearTimeout(t)
+						reject(err)
+					})
+					conn.open().catch((err) => {
+						clearTimeout(t)
+						reject(err)
+					})
+				})
+				progress(`${deviceId} connected.`)
 
 				context.deviceId = deviceId
 
@@ -146,9 +138,20 @@ export const deviceStepRunners = ({
 				)
 				if (match === null) return noMatch
 				const { name, value } = match
-				await updateTwin(registry, context.deviceId as string, {
-					tags: { [name]: value },
-				})
+				const res = await registry.getTwin(context.deviceId as string)
+				const {
+					responseBody: { tags, etag },
+				} = res
+				await registry.updateTwin(
+					context.deviceId as string,
+					{
+						tags: {
+							...tags,
+							[name]: value,
+						},
+					},
+					etag,
+				)
 			},
 			async ({
 				step,
@@ -157,26 +160,17 @@ export const deviceStepRunners = ({
 					step: { debug },
 				},
 			}): Promise<StepRunResult> => {
-				const match = matchGroups(
-					Type.Object({
-						twinState: Type.Enum(TwinState),
-					}),
-				)(
-					/^the device updates its (?<twinState>reported|desired) state to$/,
-					step.title,
-				)
-				if (match === null) return noMatch
+				if (!/^the device updates its reported state to$/.test(step.title))
+					return noMatch
 
 				const state = JSON.parse(codeBlockOrThrow(step).code)
-				const { twinState } = match
-				debug(
-					context.deviceId as string,
-					JSON.stringify({
-						properties: { [twinState]: state },
-					}),
-				)
-				await updateTwin(registry, context.deviceId as string, {
-					properties: { [twinState]: state },
+				debug(context.deviceId as string, JSON.stringify(state))
+				const twin = await connections[context.deviceId as string].getTwin()
+				await new Promise<void>((resolve, reject) => {
+					twin.properties.reported.update(state, (error: null | Error) => {
+						if (error !== null) reject(error)
+						resolve()
+					})
 				})
 			},
 		],
