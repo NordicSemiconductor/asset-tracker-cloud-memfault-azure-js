@@ -60,5 +60,5 @@ jobs:
           echo "RESOURCE_GROUP=memfault-integration-${{ env.RANDOM_STRING }}" >> $GITHUB_ENV
 
       - name: Delete resource group
-        if: always()
+        if: env.RESOURCE_GROUP != ''
         run: az group delete -n ${{ env.RESOURCE_GROUP }} -y
