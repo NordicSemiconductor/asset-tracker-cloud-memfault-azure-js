@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   push:
 
+permissions:
+  id-token: write
+  contents: write
+  issues: write
+
 jobs:
   tests:
     runs-on: ubuntu-22.04
