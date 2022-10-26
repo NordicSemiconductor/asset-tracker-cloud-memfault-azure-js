@@ -69,13 +69,13 @@ jobs:
           env.LOCATION }}
 
       - name: Create Mock API
-        run: >-
-          az deployment group create
-            --mode Complete
-            --name manual-deployment
-            --resource-group mock-api-${{ needs.run-id.outputs.id }}
-            --template-file mock-http-api.bicep
-            --parameters
+        run: |
+          az deployment group create \
+            --mode Complete \
+            --name manual-deployment \
+            --resource-group mock-api-${{ needs.run-id.outputs.id }} \
+            --template-file mock-http-api.bicep \
+            --parameters \
                 storageAccountName=mock-api-${{ needs.run-id.outputs.id }}
 
       - name: Get API endpoint
@@ -162,9 +162,11 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Delete resource group
+        if: needs.test-resources.result == 'success'
         run:
           az group delete -n memfault-integration-${{ needs.run-id.outputs.id }}
           -y
 
       - name: Delete Mock API resource group
+        if: needs.mock-api.result == 'success'
         run: az group delete -n mock-api-${{ needs.run-id.outputs.id }} -y
