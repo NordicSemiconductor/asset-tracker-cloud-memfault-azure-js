@@ -76,18 +76,18 @@ jobs:
             --resource-group mock-api-${{ needs.run-id.outputs.id }} \
             --template-file mock-http-api.bicep \
             --parameters \
-                storageAccountName=mock-api-${{ needs.run-id.outputs.id }}
+                storageAccountName=mockapi${{ needs.run-id.outputs.id }}
 
       - name: Get API endpoint
         id: endpoint
         run: |
-          MOCK_HTTP_API_ENDPOINT=`az functionapp show -g mock-api-${{ needs.run-id.outputs.id }} -n mock-api-${{ needs.run-id.outputs.id }} | jq -r '.defaultHostName'`
+          MOCK_HTTP_API_ENDPOINT=`az functionapp show -g mock-api-${{ needs.run-id.outputs.id }} -n mockapi${{ needs.run-id.outputs.id }} | jq -r '.defaultHostName'`
           echo "endpoint=${MOCK_HTTP_API_ENDPOINT}" >> $GITHUB_OUTPUT
 
       - name: Deploy the function app
         run: |
           npx tsx scripts/pack-mock-http-api-app.ts
-          az functionapp deployment source config-zip -g mock-api-${{ needs.run-id.outputs.id }} -n mock-api-${{ needs.run-id.outputs.id }} --src dist/mock-http-api.zip
+          az functionapp deployment source config-zip -g mock-api-${{ needs.run-id.outputs.id }} -n mockapi${{ needs.run-id.outputs.id }} --src dist/mock-http-api.zip
 
   test-resources:
     needs: [run-id]
