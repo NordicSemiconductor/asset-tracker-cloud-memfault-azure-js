@@ -182,14 +182,25 @@ Use `https://nrfassettracker.invalid/memfault-ci` as the name.
 From the command line this can be achieved using:
 
 ```bash
+# Create application
 az ad app create --display-name 'https://nrfassettracker.invalid/memfault-ci'
 export APPLICATION_OBJECT_ID=`az ad app list | jq -r '.[] | select(.displayName=="https://nrfassettracker.invalid/memfault-ci") | .id' | tr -d '\n'`
-az rest --headers Content-Type=application/json --method post --uri "https://graph.microsoft.com/beta/applications/${APPLICATION_OBJECT_ID}/federatedIdentityCredentials" --body "{\"name\":\"GitHubActions\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:NordicSemiconductor/asset-tracker-cloud-memfault-azure-js:environment:ci\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
+# Create federated credentials
+az rest --method POST --uri "https://graph.microsoft.com/beta/applications/${APPLICATION_OBJECT_ID}/federatedIdentityCredentials" --body '{"name":"GitHubActions","issuer":"https://token.actions.githubusercontent.com","subject":"repo:NordicSemiconductor/asset-tracker-cloud-memfault-azure-js:environment:ci","description":"Allow GitHub Actions to modify Azure resources","audiences":["api://AzureADTokenExchange"]}'
+# Grant the application Contributor permissions for subscription
+export AZURE_CLIENT_ID=`az ad app list --display-name 'https://nrfassettracker.invalid/memfault-ci' | jq -r '.[].appId'`
+export AZURE_SUBSCRIPTION_ID=`az account show | jq -r '.id'`
+az ad sp create --id $AZURE_CLIENT_ID
+az role assignment create --role Contributor \
+         --assignee ${AZURE_CLIENT_ID} \
+         --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}
 ```
 
 Make sure to use the organization and repository name of your fork instead of
 `NordicSemiconductor/asset-tracker-cloud-memfault-azure-js` in the command
 above.
+
+Then,
 
 1. Store the application (client) ID of the service principal app registration
    created in step in the above step as a GitHub Actions secret
