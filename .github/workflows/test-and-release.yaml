@@ -255,11 +255,11 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Delete resource group
-        if: needs.test-resources.result == 'success'
+        if: always()
         run:
           az group delete -n ${{ needs.test-resources.outputs.resource-group }}
           -y
 
       - name: Delete Mock API resource group
-        if: needs.mock-api.result == 'success'
+        if: always()
         run: az group delete -n mock-api-${{ needs.run-id.outputs.id }} -y
