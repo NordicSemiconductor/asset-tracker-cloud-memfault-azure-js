@@ -96,6 +96,11 @@ jobs:
     environment:
       name: ci
 
+    outputs:
+      resource-group: ${{ steps.resource-group.outputs.name }}
+      keyvault-name: ${{ steps.resources.outputs.keyvault-name }}
+      app-name: ${{ steps.resources.outputs.app-name }}
+
     steps:
       - name: Login to Azure
         uses: azure/login@v1
@@ -105,16 +110,99 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Create resource group
-        run:
-          az group create -n memfault-integration-${{ needs.run-id.outputs.id }}
-          -l ${{ env.LOCATION }}
+        id: resource-group
+        run: |
+          az group create -n memfault-integration-${{ needs.run-id.outputs.id }} -l ${{ env.LOCATION }}
+          echo "name=memfault-integration-${{ needs.run-id.outputs.id }}" >> $GITHUB_OUTPUT
 
-      # Keyvault
-      # IoT Hub
+      - name: Create test resources
+        id: resources
+        run: |
+          APP_NAME=memfaultintegrationtest${{ needs.run-id.outputs.id }}
+          KEYVAULT_NAME=kv-${{ needs.run-id.outputs.id }}
+          az deployment group create \
+            --mode Complete \
+            --name manual-deployment \
+            --resource-group ${{ steps.resource-group.outputs.name }} \
+            --template-file test-resources.bicep \
+            --parameters \
+                appName=${APP_NAME} \
+                keyVaultName=${KEYVAULT_NAME}
+          echo "keyvault-name=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
+          echo "app-name=${APP_NAME}" >> $GITHUB_OUTPUT
+
+  integration-resources:
+    needs: [run-id, test-resources]
+    runs-on: ubuntu-22.04
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create integration resources
+        run: |
+          az deployment group create \
+            --mode Incremental \
+            --name memfault-integration-deployment \
+            --resource-group ${{ needs.test-resources.outputs.resource-group }} \
+            --template-file memfault-integration.bicep \
+            --parameters \
+                appName=${{ needs.test-resources.outputs.app-name }} \
+                keyVaultName=${{ needs.test-resources.outputs.keyvault-name }} \
+                storageAccountName=memfaultintegration${{ needs.run-id.outputs.id }}
+
+      - name: Deploy the function app
+        run: |
+          npm ci --no-audit
+          npx tsc
+          npx tsx scripts/pack-app.ts
+          az functionapp deployment source config-zip -g ${{ needs.test-resources.outputs.resource-group }} -n ${{ needs.test-resources.outputs.app-name }}-memfault-integration --src dist/functionapp.zip
+
+  keyvault-settings:
+    runs-on: ubuntu-22.04
+    needs: [run-id, mock-api, test-resources]
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure Memfault Key value parameters
+        run: |
+          USER_OBJECT_ID=`az ad signed-in-user show --query id -o tsv`
+          echo "USER_OBJECT_ID=${USER_OBJECT_ID}" >> $GITHUB_ENV
+
+      - name: Assign 'Key Vault Secrets Officer' permission
+        run: |
+          az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 \
+            --assignee ${{ env.USER_OBJECT_ID }} \
+            --scope /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ needs.test-resources.outputs.resource-group }}/providers/Microsoft.KeyVault/vaults/${{ needs.run-id.outputs.id }}
+
+      - name: Set secrets
+        run: |
+          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultProjectKey --value my-projectKey
+          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultOrganization --value my-org
+          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultProject --value my-project
+          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultAuthToken --value my-authToken
+          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultApiEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/api.memfault.com/"
+          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultChunksEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/chunks.memfault.com/"
 
   test:
     runs-on: ubuntu-22.04
-    needs: [test-resources, mock-api]
+    needs: [test-resources, mock-api, keyvault-settings, integration-resources]
 
     environment:
       name: ci
@@ -145,9 +233,12 @@ jobs:
       - name: Compile source
         run: npx tsc
 
+      - name: Run tests
+        run: npm run test:e2e
+
   cleanup:
     runs-on: ubuntu-22.04
-    needs: [test]
+    needs: [test, test-resources]
     if: always() && !cancelled()
 
     environment:
@@ -164,7 +255,7 @@ jobs:
       - name: Delete resource group
         if: needs.test-resources.result == 'success'
         run:
-          az group delete -n memfault-integration-${{ needs.run-id.outputs.id }}
+          az group delete -n ${{ needs.test-resources.outputs.resource-group }}
           -y
 
       - name: Delete Mock API resource group
