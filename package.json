@@ -90,6 +90,6 @@
     "@azure/functions": "3.2.0",
     "@azure/identity": "3.0.0",
     "@azure/keyvault-secrets": "4.6.0",
-    "@nordicsemiconductor/from-env": "1.0.2"
+    "@nordicsemiconductor/from-env": "1.0.3"
   }
 }
