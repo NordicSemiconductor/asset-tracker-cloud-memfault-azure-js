@@ -58,7 +58,7 @@ jobs:
             az account list --output table
       - uses: actions/setup-node@v3
         with:
-          node-version: "16.x"
+          node-version: "18.x"
       - uses: actions/checkout@v3
       - name: Keep npm cache around to speed up installs
         uses: actions/cache@v3
