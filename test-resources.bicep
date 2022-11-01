@@ -17,8 +17,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
     enabledForDeployment: false
     enabledForDiskEncryption: false
     enabledForTemplateDeployment: false
+    tenantId: subscription().tenantId
     sku: {
-      name: 'Standard'
+      name: 'standard'
       family: 'A'
     }
   }
@@ -39,14 +40,12 @@ resource iotHub 'Microsoft.Devices/IotHubs@2020-03-01' = {
         {
           name: 'twinChangeEventsToEventHub'
           source: 'TwinChangeEvents'
-          condition: true
           endpointNames: ['events']
           isEnabled: true
         }
         {
           name: 'deviceMessagesToEventHub'
           source: 'DeviceMessages'
-          condition: true
           endpointNames: ['events']
           isEnabled: true
         }
