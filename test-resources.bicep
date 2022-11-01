@@ -53,7 +53,7 @@ resource iotHub 'Microsoft.Devices/IotHubs@2020-03-01' = {
     }
   }
   sku: {
-    name: 'F1'
+    name: 'S1'
     capacity: 1
   }
 }
