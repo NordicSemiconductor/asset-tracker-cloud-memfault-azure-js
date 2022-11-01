@@ -187,11 +187,11 @@ az ad app create --display-name 'https://nrfassettracker.invalid/memfault-ci'
 export APPLICATION_OBJECT_ID=`az ad app list | jq -r '.[] | select(.displayName=="https://nrfassettracker.invalid/memfault-ci") | .id' | tr -d '\n'`
 # Create federated credentials
 az rest --method POST --uri "https://graph.microsoft.com/beta/applications/${APPLICATION_OBJECT_ID}/federatedIdentityCredentials" --body '{"name":"GitHubActions","issuer":"https://token.actions.githubusercontent.com","subject":"repo:NordicSemiconductor/asset-tracker-cloud-memfault-azure-js:environment:ci","description":"Allow GitHub Actions to modify Azure resources","audiences":["api://AzureADTokenExchange"]}'
-# Grant the application Contributor permissions for subscription
+# Grant the application Owner permissions for subscription
 export AZURE_CLIENT_ID=`az ad app list --display-name 'https://nrfassettracker.invalid/memfault-ci' | jq -r '.[].appId'`
 export AZURE_SUBSCRIPTION_ID=`az account show | jq -r '.id'`
 az ad sp create --id $AZURE_CLIENT_ID
-az role assignment create --role Contributor \
+az role assignment create --role Owner \
          --assignee ${AZURE_CLIENT_ID} \
          --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}
 ```
