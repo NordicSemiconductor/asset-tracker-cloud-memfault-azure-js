@@ -120,7 +120,7 @@ jobs:
       - name: Create test resources
         id: resources
         run: |
-          APP_NAME=memfaultintegrationtest${{ needs.run-id.outputs.id }}
+          APP_NAME=mfltinttest${{ needs.run-id.outputs.id }}
           KEYVAULT_NAME=kv-${{ needs.run-id.outputs.id }}
           az deployment group create \
             --mode Complete \
@@ -160,7 +160,7 @@ jobs:
             --parameters \
                 appName=${{ needs.test-resources.outputs.app-name }} \
                 keyVaultName=${{ needs.test-resources.outputs.keyvault-name }} \
-                storageAccountName=memfaultintegration${{ needs.run-id.outputs.id }}
+                storageAccountName=mfltint${{ needs.run-id.outputs.id }}
 
       - name: Deploy the function app
         run: |
