@@ -12,3 +12,4 @@ memfault-integration.json
 memfault-consumer-group.json
 mock-http-api.json
 .net
+e2e-test-result.json

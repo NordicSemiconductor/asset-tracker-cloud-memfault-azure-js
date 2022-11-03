@@ -6,6 +6,7 @@ import { consoleReporter, runFolder } from '@nordicsemiconductor/bdd-markdown'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import iothub from 'azure-iothub'
 import chalk from 'chalk'
+import { writeFile } from 'node:fs/promises'
 import path from 'path'
 import { cliCredentials } from '../cli/cliCredentials.js'
 import { progress as logProgress } from '../cli/logging'
@@ -143,6 +144,12 @@ runner.addStepRunners(...deviceSteps).addStepRunners(
 const testResult = await runner.run(world)
 
 consoleReporter(testResult, console.log)
+
+await writeFile(
+	path.join(process.cwd(), 'e2e-test-result.json'),
+	JSON.stringify(testResult),
+	'utf-8',
+)
 
 await deviceStepsCleanUp()
 
