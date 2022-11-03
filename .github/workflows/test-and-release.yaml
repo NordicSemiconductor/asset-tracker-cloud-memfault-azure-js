@@ -238,9 +238,9 @@ jobs:
       - name: Run tests
         run: npm run test:e2e
 
-  cleanup:
+  cleanup-test-resources:
     runs-on: ubuntu-22.04
-    needs: [test, test-resources, mock-api]
+    needs: [test, test-resources]
     if: always() && !cancelled()
 
     environment:
@@ -259,6 +259,22 @@ jobs:
         run:
           az group delete -n ${{ needs.test-resources.outputs.resource-group }}
           -y
+
+  cleanup-mock-api:
+    runs-on: ubuntu-22.04
+    needs: [test, mock-api]
+    if: always() && !cancelled()
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Delete Mock API resource group
         if: always()
