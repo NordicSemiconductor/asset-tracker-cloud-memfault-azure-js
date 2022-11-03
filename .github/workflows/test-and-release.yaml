@@ -33,6 +33,7 @@ jobs:
 
     outputs:
       endpoint: ${{ steps.endpoint.outputs.endpoint }}
+      resource-group: ${{ steps.resource-group.outputs.name }}
 
     environment:
       name: ci
@@ -64,16 +65,18 @@ jobs:
         run: npx tsc
 
       - name: Create resource group
-        run:
+        id: resource-group
+        run: |
           az group create -n mock-api-${{ needs.run-id.outputs.id }} -l ${{
           env.LOCATION }}
+          echo "name=mock-api-${{ needs.run-id.outputs.id }}" >> $GITHUB_OUTPUT
 
       - name: Create Mock API
         run: |
           az deployment group create \
             --mode Complete \
             --name manual-deployment \
-            --resource-group mock-api-${{ needs.run-id.outputs.id }} \
+            --resource-group ${{ steps.resource-group.outputs.name }} \
             --template-file mock-http-api.bicep \
             --parameters \
                 storageAccountName=mockapi${{ needs.run-id.outputs.id }}
@@ -81,13 +84,13 @@ jobs:
       - name: Get API endpoint
         id: endpoint
         run: |
-          MOCK_HTTP_API_ENDPOINT=`az functionapp show -g mock-api-${{ needs.run-id.outputs.id }} -n mockapi${{ needs.run-id.outputs.id }} | jq -r '.defaultHostName'`
+          MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${{ steps.resource-group.outputs.name }} -n mockapi${{ needs.run-id.outputs.id }} | jq -r '.defaultHostName'`
           echo "endpoint=${MOCK_HTTP_API_ENDPOINT}" >> $GITHUB_OUTPUT
 
       - name: Deploy the function app
         run: |
           npx tsx scripts/pack-mock-http-api-app.ts
-          az functionapp deployment source config-zip -g mock-api-${{ needs.run-id.outputs.id }} -n mockapi${{ needs.run-id.outputs.id }} --src dist/mock-http-api.zip
+          az functionapp deployment source config-zip -g ${{ steps.resource-group.outputs.name }} -n mockapi${{ needs.run-id.outputs.id }} --src dist/mock-http-api.zip
 
   test-resources:
     needs: [run-id]
@@ -242,7 +245,7 @@ jobs:
 
   cleanup:
     runs-on: ubuntu-22.04
-    needs: [test, test-resources]
+    needs: [test, test-resources, mock-api]
     if: always() && !cancelled()
 
     environment:
@@ -264,4 +267,4 @@ jobs:
 
       - name: Delete Mock API resource group
         if: always()
-        run: az group delete -n mock-api-${{ needs.run-id.outputs.id }} -y
+        run: az group delete -n ${{ needs.mock-api.outputs.resource-group }} -y
