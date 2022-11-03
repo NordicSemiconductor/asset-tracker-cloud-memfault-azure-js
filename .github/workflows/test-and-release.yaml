@@ -34,6 +34,7 @@ jobs:
     outputs:
       endpoint: ${{ steps.endpoint.outputs.endpoint }}
       resource-group: ${{ steps.resource-group.outputs.name }}
+      storage-account-name: ${{ steps.resources.outputs.storage-account-name }}
 
     environment:
       name: ci
@@ -72,14 +73,17 @@ jobs:
           echo "name=mock-api-${{ needs.run-id.outputs.id }}" >> $GITHUB_OUTPUT
 
       - name: Create Mock API
+        id: resources
         run: |
+          STORAGE_ACCOUNT_NAME=mockapi${{ needs.run-id.outputs.id }}
           az deployment group create \
             --mode Complete \
             --name manual-deployment \
             --resource-group ${{ steps.resource-group.outputs.name }} \
             --template-file mock-http-api.bicep \
             --parameters \
-                storageAccountName=mockapi${{ needs.run-id.outputs.id }}
+                storageAccountName=$STORAGE_ACCOUNT_NAME
+          echo "storage-account-name=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
 
       - name: Get API endpoint
         id: endpoint
@@ -143,6 +147,9 @@ jobs:
     environment:
       name: ci
 
+    outputs:
+      storage-account-name: ${{ steps.resources.outputs.storage-account-name }}
+
     steps:
       - name: Login to Azure
         uses: azure/login@v1
@@ -154,7 +161,9 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Create integration resources
+        id: resources
         run: |
+          STORAGE_ACCOUNT_NAME=mfltint${{ needs.run-id.outputs.id }}
           az deployment group create \
             --mode Incremental \
             --name memfault-integration-deployment \
@@ -163,7 +172,8 @@ jobs:
             --parameters \
                 appName=${{ needs.test-resources.outputs.app-name }} \
                 keyVaultName=${{ needs.test-resources.outputs.keyvault-name }} \
-                storageAccountName=mfltint${{ needs.run-id.outputs.id }}
+                storageAccountName=$STORAGE_ACCOUNT_NAME
+          echo "storage-account-name=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
 
       - name: Deploy the function app
         run: |
@@ -236,6 +246,13 @@ jobs:
         run: npx tsc
 
       - name: Run tests
+        env:
+          IOT_HUB_NAME: ${{ needs.test-resources.outputs.app-name }}IotHub
+          RESOURCE_GROUP: ${{ needs.test-resources.outputs.resource-group }}
+          MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:
+            ${{ needs.mock-api.outputs.storage-account-name }}
+          STORAGE_ACCOUNT_NAME:
+            ${{ needs. integration-resources.outputs.storage-account-name }}
         run: npm run test:e2e
 
   cleanup-test-resources:
