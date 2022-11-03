@@ -14,6 +14,8 @@ permissions:
 
 jobs:
   run-id:
+    name: Create run ID
+
     runs-on: ubuntu-22.04
 
     outputs:
@@ -27,6 +29,8 @@ jobs:
           echo "id=${RUN_ID}" >> $GITHUB_OUTPUT
 
   mock-api:
+    name: Create mock HTTP API
+
     runs-on: ubuntu-22.04
 
     needs: [run-id]
@@ -97,6 +101,8 @@ jobs:
           az functionapp deployment source config-zip -g ${{ steps.resource-group.outputs.name }} -n mockapi${{ needs.run-id.outputs.id }} --src dist/mock-http-api.zip
 
   test-resources:
+    name: Create test resources
+
     needs: [run-id]
     runs-on: ubuntu-22.04
 
@@ -141,6 +147,8 @@ jobs:
           echo "app-name=${APP_NAME}" >> $GITHUB_OUTPUT
 
   integration-resources:
+    name: Deploy Memfault integration resources
+
     needs: [run-id, test-resources]
     runs-on: ubuntu-22.04
 
@@ -183,6 +191,8 @@ jobs:
           az functionapp deployment source config-zip -g ${{ needs.test-resources.outputs.resource-group }} -n ${{ needs.test-resources.outputs.app-name }}-memfault-integration --src dist/functionapp.zip
 
   keyvault-settings:
+    name: Store necessary settings in KeyVault
+
     runs-on: ubuntu-22.04
     needs: [run-id, mock-api, test-resources]
 
@@ -213,6 +223,8 @@ jobs:
           az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultChunksEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/chunks.memfault.com/"
 
   test:
+    name: Run end-to-end tests
+
     runs-on: ubuntu-22.04
     needs: [test-resources, mock-api, keyvault-settings, integration-resources]
 
@@ -264,6 +276,8 @@ jobs:
           path: e2e-test-result.json
 
   cleanup-test-resources:
+    name: Clean up test resources
+
     runs-on: ubuntu-22.04
     needs: [test, test-resources]
     if: always() && !cancelled()
@@ -286,6 +300,8 @@ jobs:
           -y
 
   cleanup-mock-api:
+    name: Clean up mock HTTP API resources
+
     runs-on: ubuntu-22.04
     needs: [test, mock-api]
     if: always() && !cancelled()
