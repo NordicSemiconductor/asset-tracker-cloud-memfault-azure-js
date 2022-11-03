@@ -191,16 +191,16 @@ jobs:
         run: |
           az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 \
             --assignee ${{ secrets.AZURE_CLIENT_ID }} \
-            --scope /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ needs.test-resources.outputs.resource-group }}/providers/Microsoft.KeyVault/vaults/${{ needs.run-id.outputs.id }}
+            --scope /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ needs.test-resources.outputs.resource-group }}/providers/Microsoft.KeyVault/vaults/${{ needs.test-resources.outputs.keyvault-name }}
 
       - name: Set secrets
         run: |
-          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultProjectKey --value my-projectKey
-          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultOrganization --value my-org
-          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultProject --value my-project
-          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultAuthToken --value my-authToken
-          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultApiEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/api.memfault.com/"
-          az keyvault secret set --vault-name ${{ needs.run-id.outputs.id }} --name memfaultChunksEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/chunks.memfault.com/"
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultProjectKey --value my-projectKey
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultOrganization --value my-org
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultProject --value my-project
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultAuthToken --value my-authToken
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultApiEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/api.memfault.com/"
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultChunksEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/chunks.memfault.com/"
 
   test:
     runs-on: ubuntu-22.04
