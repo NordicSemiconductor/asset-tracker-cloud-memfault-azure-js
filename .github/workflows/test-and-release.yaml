@@ -38,7 +38,7 @@ jobs:
     outputs:
       endpoint: ${{ steps.endpoint.outputs.endpoint }}
       resource-group: ${{ steps.resource-group.outputs.name }}
-      storage-account-name: ${{ steps.resources.outputs.storage-account-name }}
+      storage-account: ${{ steps.resources.outputs.storage-account }}
 
     environment:
       name: ci
@@ -87,7 +87,7 @@ jobs:
             --template-file mock-http-api.bicep \
             --parameters \
                 storageAccountName=$STORAGE_ACCOUNT_NAME
-          echo "storage-account-name=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+          echo "storage-account=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
 
       - name: Get API endpoint
         id: endpoint
@@ -156,7 +156,7 @@ jobs:
       name: ci
 
     outputs:
-      storage-account-name: ${{ steps.resources.outputs.storage-account-name }}
+      storage-account: ${{ steps.resources.outputs.storage-account }}
 
     steps:
       - name: Login to Azure
@@ -181,7 +181,7 @@ jobs:
                 appName=${{ needs.test-resources.outputs.app-name }} \
                 keyVaultName=${{ needs.test-resources.outputs.keyvault-name }} \
                 storageAccountName=$STORAGE_ACCOUNT_NAME
-          echo "storage-account-name=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+          echo "storage-account=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
 
       - name: Deploy the function app
         run: |
@@ -261,10 +261,9 @@ jobs:
         env:
           IOT_HUB_NAME: ${{ needs.test-resources.outputs.app-name }}IotHub
           RESOURCE_GROUP: ${{ needs.test-resources.outputs.resource-group }}
-          MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:
-            ${{ needs.mock-api.outputs.storage-account-name }}
-          STORAGE_ACCOUNT_NAME:
-            ${{ needs. integration-resources.outputs.storage-account-name }}
+          MOCK_API_RESOURCE_GROUP: ${{ needs.mock-api.outputs.resource-group }}
+          MOCK_API_STORAGE_ACCOUNT_NAME:
+            ${{ needs.mock-api.outputs.storage-account }}
         run: |
           npm run test:e2e
           cat e2e-test-result.json | npx tsx feature-runner/markdown-reporter.ts >> $GITHUB_STEP_SUMMARY

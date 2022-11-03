@@ -24,10 +24,10 @@ const {
 } = fromEnv({
 	resourceGroup: 'RESOURCE_GROUP',
 	iotHubName: 'IOT_HUB_NAME',
-	mockHTTPStorageAccountName: 'MOCK_HTTP_API_STORAGE_ACCOUNT_NAME',
+	mockHTTPStorageAccountName: 'MOCK_API_STORAGE_ACCOUNT_NAME',
 	mockHTTPResourceGroup: 'MOCK_API_RESOURCE_GROUP',
 })({
-	MOCK_HTTP_API_STORAGE_ACCOUNT_NAME: 'mockhttpapi',
+	MOCK_API_STORAGE_ACCOUNT_NAME: 'mockhttpapi',
 	MOCK_API_RESOURCE_GROUP: 'memfault-mock-api',
 	...process.env,
 })
@@ -95,6 +95,7 @@ settings({
 	Subscription: subscriptionId,
 	'Resource Group': resourceGroup,
 	'Mock HTTP API endpoint': mockHTTPApiEndpointUrl,
+	'Mock HTTP API resource group': mockHTTPResourceGroup,
 	'IoT Hub Resource Group': resourceGroup,
 	'IoT Hub Name': iotHubName,
 	'IoT Hub Endpoint': iotHubHostname,
