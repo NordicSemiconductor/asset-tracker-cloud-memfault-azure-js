@@ -39,6 +39,7 @@ jobs:
       endpoint: ${{ steps.endpoint.outputs.endpoint }}
       resource-group: ${{ steps.resource-group.outputs.name }}
       storage-account: ${{ steps.resources.outputs.storage-account }}
+      app-name: ${{ steps.resources.outputs.app-name }}
 
     environment:
       name: ci
@@ -87,7 +88,9 @@ jobs:
             --template-file mock-http-api.bicep \
             --parameters \
                 storageAccountName=$STORAGE_ACCOUNT_NAME
+                appName=$STORAGE_ACCOUNT_NAME
           echo "storage-account=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+          echo "app-name=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
 
       - name: Get API endpoint
         id: endpoint
@@ -264,6 +267,7 @@ jobs:
           MOCK_API_RESOURCE_GROUP: ${{ needs.mock-api.outputs.resource-group }}
           MOCK_API_STORAGE_ACCOUNT_NAME:
             ${{ needs.mock-api.outputs.storage-account }}
+          MOCK_API_APP_NAME: ${{ needs.mock-api.outputs.app-name }}
         run: |
           npm run test:e2e
           cat e2e-test-result.json | npx tsx feature-runner/markdown-reporter.ts >> $GITHUB_STEP_SUMMARY

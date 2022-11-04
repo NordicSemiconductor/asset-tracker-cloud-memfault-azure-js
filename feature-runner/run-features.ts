@@ -19,16 +19,19 @@ const { Registry } = iothub
 const {
 	resourceGroup,
 	iotHubName,
-	mockHTTPStorageAccountName,
-	mockHTTPResourceGroup,
+	mockAPIStorageAccountName,
+	mockAPIResourceGroup,
+	mockAPIAppName,
 } = fromEnv({
 	resourceGroup: 'RESOURCE_GROUP',
 	iotHubName: 'IOT_HUB_NAME',
-	mockHTTPStorageAccountName: 'MOCK_API_STORAGE_ACCOUNT_NAME',
-	mockHTTPResourceGroup: 'MOCK_API_RESOURCE_GROUP',
+	mockAPIStorageAccountName: 'MOCK_API_STORAGE_ACCOUNT_NAME',
+	mockAPIResourceGroup: 'MOCK_API_RESOURCE_GROUP',
+	mockAPIAppName: 'MOCK_API_APP_NAME',
 })({
 	MOCK_API_STORAGE_ACCOUNT_NAME: 'mockhttpapi',
 	MOCK_API_RESOURCE_GROUP: 'memfault-mock-api',
+	MOCK_API_APP_NAME: 'MockHttpAPI',
 	...process.env,
 })
 
@@ -42,9 +45,9 @@ const { credentials, subscriptionId } = await cliCredentials()
 
 const wsClient = new WebSiteManagementClient(credentials, subscriptionId)
 logProgress('Azure', 'Fetching mock API settings')
-const [mockHTTPApiEndpoint, mockHTTPApiSettings] = await Promise.all([
+const [mockAPIEndpoint, mockAPIApiSettings] = await Promise.all([
 	wsClient.webApps
-		.get(mockHTTPResourceGroup, `MockHttpAPI`)
+		.get(mockAPIResourceGroup, mockAPIAppName)
 		.then(({ defaultHostName }) => defaultHostName),
 	// FIXME: there seems to be no NPM package to manage Azure function apps
 	run({
@@ -55,26 +58,26 @@ const [mockHTTPApiEndpoint, mockHTTPApiSettings] = await Promise.all([
 			'appsettings',
 			'list',
 			'-g',
-			mockHTTPResourceGroup,
+			mockAPIResourceGroup,
 			'-n',
-			`MockHttpAPI`,
+			mockAPIAppName,
 		],
 	}).then((res) => JSON.parse(res) as { name: string; value: string }[]),
 ])
 
-const mockHTTPStorageAccessKey = mockHTTPApiSettings.find(
+const mockAPIStorageAccessKey = mockAPIApiSettings.find(
 	({ name }) => name === 'STORAGE_ACCESS_KEY',
 )?.value as string
 
-if (mockHTTPApiEndpoint === undefined) {
+if (mockAPIEndpoint === undefined) {
 	error(`Could not determine mock HTTP API endpoint!`)
 	process.exit(1)
 }
-if (mockHTTPStorageAccessKey === undefined) {
+if (mockAPIStorageAccessKey === undefined) {
 	error(`Could not determine mock HTTP API storage access key!`)
 	process.exit(1)
 }
-const mockHTTPApiEndpointUrl = `https://${mockHTTPApiEndpoint}/`
+const mockAPIEndpointUrl = `https://${mockAPIEndpoint}/`
 
 logProgress('Azure', 'Fetching IoT Hub info')
 const iotHubClient = new IotHubClient(credentials, subscriptionId)
@@ -94,15 +97,15 @@ const registry = Registry.fromConnectionString(
 settings({
 	Subscription: subscriptionId,
 	'Resource Group': resourceGroup,
-	'Mock HTTP API endpoint': mockHTTPApiEndpointUrl,
-	'Mock HTTP API resource group': mockHTTPResourceGroup,
+	'Mock HTTP API endpoint': mockAPIEndpointUrl,
+	'Mock HTTP API resource group': mockAPIResourceGroup,
 	'IoT Hub Resource Group': resourceGroup,
 	'IoT Hub Name': iotHubName,
 	'IoT Hub Endpoint': iotHubHostname,
 })
 
 const world: World = {
-	'httpApiMock:apiEndpoint': `${mockHTTPApiEndpointUrl}api/`,
+	'httpApiMock:apiEndpoint': `${mockAPIEndpointUrl}api/`,
 } as const
 heading('World')
 settings(world)
@@ -128,11 +131,11 @@ runner.addStepRunners(...deviceSteps).addStepRunners(
 	...(() => {
 		const tableClient = (tableName: string) =>
 			new TableClient(
-				`https://${mockHTTPStorageAccountName}.table.core.windows.net`,
+				`https://${mockAPIStorageAccountName}.table.core.windows.net`,
 				tableName,
 				new AzureNamedKeyCredential(
-					mockHTTPStorageAccountName,
-					mockHTTPStorageAccessKey,
+					mockAPIStorageAccountName,
+					mockAPIStorageAccessKey,
 				),
 			)
 		return httpApiMockStepRunners({
