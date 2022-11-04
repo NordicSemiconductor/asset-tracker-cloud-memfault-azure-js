@@ -171,3 +171,49 @@ az webapp log tail --resource-group ${RESOURCE_GROUP:-nrfassettracker} --name ${
 # Run the end-to-end tests
 npm run test:e2e
 ```
+
+## Continuous Integration
+
+In order to continuously test this solution, authenticate GitHub Actions by
+follow the instructions to
+[Configure a service principal with a Federated Credential to use OIDC based authentication](https://github.com/Azure/login#configure-a-service-principal-with-a-federated-credential-to-use-oidc-based-authentication).
+Use `https://nrfassettracker.invalid/memfault-ci` as the name.
+
+From the command line this can be achieved using:
+
+```bash
+# Create application
+az ad app create --display-name 'https://nrfassettracker.invalid/memfault-ci'
+export APPLICATION_OBJECT_ID=`az ad app list | jq -r '.[] | select(.displayName=="https://nrfassettracker.invalid/memfault-ci") | .id' | tr -d '\n'`
+# Create federated credentials
+az rest --method POST --uri "https://graph.microsoft.com/beta/applications/${APPLICATION_OBJECT_ID}/federatedIdentityCredentials" --body '{"name":"GitHubActions","issuer":"https://token.actions.githubusercontent.com","subject":"repo:NordicSemiconductor/asset-tracker-cloud-memfault-azure-js:environment:ci","description":"Allow GitHub Actions to modify Azure resources","audiences":["api://AzureADTokenExchange"]}'
+# Grant the application Owner permissions for subscription
+export AZURE_CLIENT_ID=`az ad app list --display-name 'https://nrfassettracker.invalid/memfault-ci' | jq -r '.[].appId'`
+export AZURE_SUBSCRIPTION_ID=`az account show | jq -r '.id'`
+az ad sp create --id $AZURE_CLIENT_ID
+az role assignment create --role Owner \
+         --assignee ${AZURE_CLIENT_ID} \
+         --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}
+```
+
+Make sure to use the organization and repository name of your fork instead of
+`NordicSemiconductor/asset-tracker-cloud-memfault-azure-js` in the command
+above.
+
+Then,
+
+1. Store the application (client) ID of the service principal app registration
+   created in step in the above step as a GitHub Actions secret
+   ```bash
+   gh secret set AZURE_CLIENT_ID --env ci --body `az ad app list --display-name 'https://nrfassettracker.invalid/memfault-ci' | jq -r '.[].appId'`
+   ```
+1. Store the directory (tenant) ID of the service principal app registration
+   created in step in the above step as a GitHub Actions secret
+   ```bash
+   gh secret set AZURE_TENANT_ID --env ci --body `az account show | jq -r '.tenantId'`
+   ```
+1. Store the ID of the subscription which contains the resources as a GitHub
+   Actions secret
+   ```bash
+   gh secret set AZURE_SUBSCRIPTION_ID --env ci --body `az account show | jq -r '.id'`
+   ```

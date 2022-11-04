@@ -3,172 +3,323 @@ name: Test and Release
 on:
   workflow_dispatch:
   push:
-    paths-ignore:
-      - .github/workflows/test-docker.yaml
-      - .github/workflows/publish-docker.yaml
-      - .github/workflows/cd.yaml
+
+env:
+  LOCATION: norwayeast
+
+permissions:
+  id-token: write
+  contents: write
+  issues: write
 
 jobs:
-  tests:
+  run-id:
+    name: Create run ID
+
     runs-on: ubuntu-22.04
 
-    # Running CI in clean environment is currently not possible: https://github.com/NordicSemiconductor/asset-tracker-cloud-memfault-azure-js/issues/1
+    outputs:
+      id: ${{ steps.run-id.outputs.id }}
+
+    steps:
+      - name: Generate ID
+        id: run-id
+        run: |
+          RUN_ID=`node -e "const crypto = require('crypto'); process.stdout.write(crypto.randomBytes(Math.ceil(8 * 0.5)).toString('hex').slice(0, 8));"`
+          echo "id=${RUN_ID}" >> $GITHUB_OUTPUT
+
+  mock-api:
+    name: Create mock HTTP API
+
+    runs-on: ubuntu-22.04
+
+    needs: [run-id]
+
+    outputs:
+      endpoint: ${{ steps.endpoint.outputs.endpoint }}
+      resource-group: ${{ steps.resource-group.outputs.name }}
+      storage-account: ${{ steps.resources.outputs.storage-account }}
+      app-name: ${{ steps.resources.outputs.app-name }}
+
     environment:
       name: ci
 
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      APP_NAME: ${{ secrets.APP_NAME }}
-      B2C_TENANT: ${{ secrets.B2C_TENANT }}
-      LOCATION: ${{ secrets.LOCATION }}
-      APP_REG_CLIENT_ID: ${{ secrets.APP_REG_CLIENT_ID }}
-      B2C_CLIENT_SECRET: ${{ secrets.B2C_CLIENT_SECRET }}
-      B2C_TENANT_ID: ${{ secrets.B2C_TENANT_ID }}
-      RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
-      MOCK_HTTP_API_STORAGE_ACCOUNT_NAME: mockhttpapi
-
     steps:
-      - name: Print azure CLI version
-        uses: azure/CLI@v1
-        with:
-          inlineScript: az --version
-      # We are authenticating here the non-containerized environment, so we
-      # can run the Azure JavaScript SDK with these credentials
-      # Needs to be done before the in-container auth in the next step
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      # In-container auth in the next step
-      - name: Login to Azure CLI
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            AZURE_CLIENT_ID=`jq -r '.clientId' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
-            AZURE_CLIENT_SECRET=`jq -r '.clientSecret' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
-            AZURE_TENANT_ID=`jq -r '.tenantId' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
-            echo "::add-mask::${AZURE_CLIENT_ID}"
-            echo "::add-mask::${AZURE_CLIENT_SECRET}"
-            echo "::add-mask::${AZURE_TENANT_ID}"
-            az login --service-principal -u ${AZURE_CLIENT_ID} -p ${AZURE_CLIENT_SECRET} --tenant ${AZURE_TENANT_ID}
-      - name: List Azure accounts
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az account list --output table
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/checkout@v3
+
       - uses: actions/setup-node@v3
         with:
-          node-version: "16.x"
-      - uses: actions/checkout@v3
+          node-version: "18.x"
+
       - name: Keep npm cache around to speed up installs
         uses: actions/cache@v3
         with:
           path: ~/.npm
           key: ${{ runner.OS }}-build-${{ hashFiles('**/package-lock.json') }}
+
       - name: Install dependencies
         run: npm ci --no-audit
-      - run: npx tsc
-      - name: Run Unit Tests
-        run: npm test
-      - name: Verify bicep file
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            find ./ -type f -name \*.bicep | xargs -I@ az bicep build -f @
-      - name: Deploy Mock HTTP API
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az deployment group create \
-              --resource-group ${RESOURCE_GROUP:-memfaultci} \
-              --mode Incremental \
-              --name test-mock-http-api-${{ github.sha }} \
-              --template-file mock-http-api.json \
-              --parameters \
-                storageAccountName=${MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:-mockhttpapi}
-      - name: Determine Mock API endpoint
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            echo "MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${RESOURCE_GROUP:-memfaultci} -n ${MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:-mockhttpapi}Functions | jq -r '.defaultHostName'`" >> $GITHUB_ENV
-      - name: Pack mock functions
-        run: node scripts/pack-mock-http-api-app.js
-      - name: Deploy mock functions
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-memfaultci} -n ${MOCK_HTTP_API_STORAGE_ACCOUNT_NAME:-mockhttpapi}Functions --src dist/mock-http-api.zip
-      - name: Set random nRF Cloud Team ID
+
+      - name: Compile source
+        run: npx tsc
+
+      - name: Create resource group
+        id: resource-group
         run: |
-          echo "NRF_CLOUD_TEAM_ID=`uuidgen`" >> $GITHUB_ENV
-      - name: Set Key Vault name
+          az group create -n mock-api-${{ needs.run-id.outputs.id }} -l ${{
+          env.LOCATION }}
+          echo "name=mock-api-${{ needs.run-id.outputs.id }}" >> $GITHUB_OUTPUT
+
+      - name: Create Mock API
+        id: resources
         run: |
-          echo "keyVaultName=${APP_NAME:-memfaultci}" >> $GITHUB_ENV
-      - name: Set secrets for third party APIs
-        uses: azure/CLI@v1
+          STORAGE_ACCOUNT_NAME=mockapi${{ needs.run-id.outputs.id }}
+          az deployment group create \
+            --mode Complete \
+            --name manual-deployment \
+            --resource-group ${{ steps.resource-group.outputs.name }} \
+            --template-file mock-http-api.bicep \
+            --parameters \
+                storageAccountName=$STORAGE_ACCOUNT_NAME
+                appName=$STORAGE_ACCOUNT_NAME
+          echo "storage-account=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+          echo "app-name=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Get API endpoint
+        id: endpoint
+        run: |
+          MOCK_HTTP_API_ENDPOINT=`az functionapp show -g ${{ steps.resource-group.outputs.name }} -n mockapi${{ needs.run-id.outputs.id }} | jq -r '.defaultHostName'`
+          echo "endpoint=${MOCK_HTTP_API_ENDPOINT}" >> $GITHUB_OUTPUT
+
+      - name: Deploy the function app
+        run: |
+          npx tsx scripts/pack-mock-http-api-app.ts
+          az functionapp deployment source config-zip -g ${{ steps.resource-group.outputs.name }} -n mockapi${{ needs.run-id.outputs.id }} --src dist/mock-http-api.zip
+
+  test-resources:
+    name: Create test resources
+
+    needs: [run-id]
+    runs-on: ubuntu-22.04
+
+    environment:
+      name: ci
+
+    outputs:
+      resource-group: ${{ steps.resource-group.outputs.name }}
+      keyvault-name: ${{ steps.resources.outputs.keyvault-name }}
+      app-name: ${{ steps.resources.outputs.app-name }}
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          inlineScript: |
-            AZURE_CLIENT_ID=`jq -r '.clientId' <<< '${{ secrets.AZURE_CREDENTIALS }}'`
-            echo "::add-mask::${AZURE_CLIENT_ID}"
-            az keyvault set-policy --name ${keyVaultName} --spn ${AZURE_CLIENT_ID} --secret-permissions set
-            az keyvault secret set --vault-name ${keyVaultName} --name unwiredlabsApiKey --value my-secret
-            openssl ecparam -name secp256k1 -genkey > nrfcloudcelllocationservice.key
-            az keyvault secret set --vault-name ${keyVaultName} --name nrfCloudCellLocationServiceKey --file nrfcloudcelllocationservice.key
-            openssl ecparam -name secp256k1 -genkey > nrfcloudagpslocationservice.key
-            az keyvault secret set --vault-name ${keyVaultName} --name nrfCloudAGPSLocationServiceKey --file nrfcloudagpslocationservice.key
-            openssl ecparam -name secp256k1 -genkey > nrfcloudpgpslocationservice.key
-            az keyvault secret set --vault-name ${keyVaultName} --name nrfCloudPGPSLocationServiceKey --file nrfcloudpgpslocationservice.key
-      - name: Deploy solution
-        uses: azure/CLI@v1
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/checkout@v3
+
+      - name: Create resource group
+        id: resource-group
+        run: |
+          az group create -n memfault-integration-${{ needs.run-id.outputs.id }} -l ${{ env.LOCATION }}
+          echo "name=memfault-integration-${{ needs.run-id.outputs.id }}" >> $GITHUB_OUTPUT
+
+      - name: Create test resources
+        id: resources
+        run: |
+          APP_NAME=mfltinttest${{ needs.run-id.outputs.id }}
+          KEYVAULT_NAME=kv-${{ needs.run-id.outputs.id }}
+          az deployment group create \
+            --mode Complete \
+            --name manual-deployment \
+            --resource-group ${{ steps.resource-group.outputs.name }} \
+            --template-file test-resources.bicep \
+            --parameters \
+                appName=${APP_NAME} \
+                keyVaultName=${KEYVAULT_NAME}
+          echo "keyvault-name=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
+          echo "app-name=${APP_NAME}" >> $GITHUB_OUTPUT
+
+  integration-resources:
+    name: Deploy Memfault integration resources
+
+    needs: [run-id, test-resources]
+    runs-on: ubuntu-22.04
+
+    environment:
+      name: ci
+
+    outputs:
+      storage-account: ${{ steps.resources.outputs.storage-account }}
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          inlineScript: |
-            az deployment group create \
-              --resource-group ${RESOURCE_GROUP:-memfaultci} \
-              --mode Incremental \
-              --name test-${{ github.sha }} \
-              --template-file azuredeploy.json \
-              --parameters \
-                appName=${APP_NAME:-memfaultci} \
-                appRegistrationClientId=${APP_REG_CLIENT_ID} \
-                b2cTenant=${B2C_TENANT} \
-                b2cFlowName=B2C_1_developer \
-                enableUnwiredLabsCellLocation=true \
-                unwiredlabsApiEndpoint=https://${MOCK_HTTP_API_ENDPOINT}/api/eu1.unwiredlabs.com/ \
-                enableNrfCloudCellLocationService=true \
-                enableNrfCloudAGPSLocationService=true \
-                enableNrfCloudPGPSLocationService=true \
-                nrfCloudTeamId=${NRF_CLOUD_TEAM_ID} \
-                nrfCloudApiEndpoint=https://${MOCK_HTTP_API_ENDPOINT}/api/api.nrfcloud.com/ \
-                keyVaultName=${keyVaultName}
-      - name: Pack functions
-        run: node scripts/pack-app.js
-      - name: Deploy Function App
-        uses: azure/CLI@v1
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/checkout@v3
+
+      - name: Create integration resources
+        id: resources
+        run: |
+          STORAGE_ACCOUNT_NAME=mfltint${{ needs.run-id.outputs.id }}
+          az deployment group create \
+            --mode Incremental \
+            --name memfault-integration-deployment \
+            --resource-group ${{ needs.test-resources.outputs.resource-group }} \
+            --template-file memfault-integration.bicep \
+            --parameters \
+                appName=${{ needs.test-resources.outputs.app-name }} \
+                keyVaultName=${{ needs.test-resources.outputs.keyvault-name }} \
+                storageAccountName=$STORAGE_ACCOUNT_NAME
+          echo "storage-account=${STORAGE_ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Deploy the function app
+        run: |
+          npm ci --no-audit
+          npx tsc
+          npx tsx scripts/pack-app.ts
+          az functionapp deployment source config-zip -g ${{ needs.test-resources.outputs.resource-group }} -n ${{ needs.test-resources.outputs.app-name }}-memfault-integration --src dist/functionapp.zip
+
+  keyvault-settings:
+    name: Store necessary settings in KeyVault
+
+    runs-on: ubuntu-22.04
+    needs: [run-id, mock-api, test-resources]
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          inlineScript: |
-            az functionapp deployment source config-zip -g ${RESOURCE_GROUP:-memfaultci} -n ${APP_NAME:-memfaultci}api --src dist/functionapp.zip
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Assign 'Key Vault Secrets Officer' permission
+        run: |
+          az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 \
+            --assignee ${{ secrets.AZURE_CLIENT_ID }} \
+            --scope /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ needs.test-resources.outputs.resource-group }}/providers/Microsoft.KeyVault/vaults/${{ needs.test-resources.outputs.keyvault-name }}
+
+      - name: Set secrets
+        run: |
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultProjectKey --value my-projectKey
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultOrganization --value my-org
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultProject --value my-project
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultAuthToken --value my-authToken
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultApiEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/api.memfault.com/"
+          az keyvault secret set --vault-name ${{ needs.test-resources.outputs.keyvault-name }} --name memfaultChunksEndpoint --value "https://${{ needs.mock-api.outputs.endpoint }}/api/chunks.memfault.com/"
+
+  test:
+    name: Run end-to-end tests
+
+    runs-on: ubuntu-22.04
+    needs: [test-resources, mock-api, keyvault-settings, integration-resources]
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Keep npm cache around to speed up installs
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Compile source
+        run: npx tsc
+
+      - name: Run tests
+        env:
+          IOT_HUB_NAME: ${{ needs.test-resources.outputs.app-name }}IotHub
+          RESOURCE_GROUP: ${{ needs.test-resources.outputs.resource-group }}
+          MOCK_API_RESOURCE_GROUP: ${{ needs.mock-api.outputs.resource-group }}
+          MOCK_API_STORAGE_ACCOUNT_NAME:
+            ${{ needs.mock-api.outputs.storage-account }}
+          MOCK_API_APP_NAME: ${{ needs.mock-api.outputs.app-name }}
+        run: |
+          npm run test:e2e
+          cat e2e-test-result.json | npx tsx feature-runner/markdown-reporter.ts >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: functionapp-${{ github.sha }}
-          path: dist/functionapp.zip
-      - name: Cache certificates
-        uses: actions/cache@v3
-        id: certs-cache
+          name: e2e-test-result-${{ github.sha }}
+          path: e2e-test-result.json
+
+  cleanup-test-resources:
+    name: Clean up test resources
+
+    runs-on: ubuntu-22.04
+    needs: [test, test-resources]
+    if: always() && !cancelled()
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          path: ./certificates
-          key: certificates-2021-09-13
-      - name: Run End-to-End Tests
-        uses: nick-invision/retry@v2
-        env:
-          FORCE_COLOR: 3
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete resource group
+        if: always()
+        run:
+          az group delete -n ${{ needs.test-resources.outputs.resource-group }}
+          -y
+
+  cleanup-mock-api:
+    name: Clean up mock HTTP API resources
+
+    runs-on: ubuntu-22.04
+    needs: [test, mock-api]
+    if: always() && !cancelled()
+
+    environment:
+      name: ci
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: npm run test:e2e
-      - name: Delete device certificates
-        run: rm ./certificates/*/device-*
-      - name: Semantic release
-        if: success()
-        continue-on-error: true
-        run: npx semantic-release
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete Mock API resource group
+        if: always()
+        run: az group delete -n ${{ needs.mock-api.outputs.resource-group }} -y

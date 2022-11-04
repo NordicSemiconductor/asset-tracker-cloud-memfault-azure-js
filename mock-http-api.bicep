@@ -4,7 +4,7 @@ param storageAccountName string
 
 @description('Specifies the name of the function app, which is globally unique.')
 @minLength(3)
-param appName string
+param appName string = storageAccountName
 
 @description('Location for all resources.')
 param location string = resourceGroup().location

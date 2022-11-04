@@ -26,7 +26,7 @@ const createTableClient = (table: string) =>
 const requestsClient = createTableClient('Requests')
 const responsesClient = createTableClient('Responses')
 
-const mockHTTPAPI: AzureFunction = async (
+const mockAPI: AzureFunction = async (
 	context: Context,
 	req: HttpRequest,
 ): Promise<void> => {
@@ -104,4 +104,4 @@ const mockHTTPAPI: AzureFunction = async (
 	}
 }
 
-export default mockHTTPAPI
+export default mockAPI

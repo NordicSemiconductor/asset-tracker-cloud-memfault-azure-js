@@ -156,18 +156,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' existing = {
 }
 
 
-//resource keyVaultPermission 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-//  name: guid('Key Vault Secret User', 'memfaultIntegration' , subscription().subscriptionId)
-//  properties: {
-//    roleDefinitionId: keyVaultSecretsUser
-//    principalId: appIdentity.properties.principalId
-//    principalType: 'ServicePrincipal'
-//  }
-//  scope: keyVault
-//}
-
 resource keyVaultPermission 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid('Key Vault Secret User', 'memfaultIntegration' , subscription().subscriptionId)
+  name: guid('Key Vault Secret User', appName , subscription().subscriptionId)
   properties: {
     roleDefinitionId: keyVaultSecretsUser
     principalId: reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', managedIdentity), '2018-11-30').principalId
