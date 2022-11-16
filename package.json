@@ -26,7 +26,7 @@
   "author": "Nordic Semiconductor ASA | nordicsemi.no",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "@azure/arm-appservice": "13.0.2",
+    "@azure/arm-appservice": "13.0.3",
     "@azure/arm-deviceprovisioningservices": "5.0.1",
     "@azure/arm-iothub": "6.2.0",
     "@azure/arm-resources-subscriptions": "2.0.1",
