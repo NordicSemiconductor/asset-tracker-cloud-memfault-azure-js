@@ -283,6 +283,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         if: always()
         with:
+          if-no-files-found: error
           name: e2e-test-result-${{ github.sha }}
           path: e2e-test-result.json
 
