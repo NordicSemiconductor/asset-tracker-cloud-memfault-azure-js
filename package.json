@@ -35,7 +35,7 @@
     "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.146",
     "@nordicsemiconductor/bdd-markdown": "3.5.13",
     "@nordicsemiconductor/random-words": "6.0.1",
-    "@sinclair/typebox": "0.25.8",
+    "@sinclair/typebox": "0.25.9",
     "@swc/cli": "0.1.57",
     "@swc/jest": "0.2.23",
     "@types/chai-subset": "1.3.3",
