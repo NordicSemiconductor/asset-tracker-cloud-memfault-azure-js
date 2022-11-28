@@ -29,7 +29,7 @@
     "@azure/arm-appservice": "13.0.3",
     "@azure/arm-deviceprovisioningservices": "5.0.1",
     "@azure/arm-iothub": "6.2.0",
-    "@azure/arm-resources-subscriptions": "2.0.1",
+    "@azure/arm-resources-subscriptions": "2.0.2",
     "@azure/data-tables": "13.2.0",
     "@azure/logger": "1.0.3",
     "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.148",
