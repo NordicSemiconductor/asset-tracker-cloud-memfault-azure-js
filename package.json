@@ -32,7 +32,7 @@
     "@azure/arm-resources-subscriptions": "2.0.2",
     "@azure/data-tables": "13.2.0",
     "@azure/logger": "1.0.3",
-    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.152",
+    "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.153",
     "@nordicsemiconductor/bdd-markdown": "3.5.14",
     "@nordicsemiconductor/random-words": "6.0.1",
     "@sinclair/typebox": "0.25.9",
