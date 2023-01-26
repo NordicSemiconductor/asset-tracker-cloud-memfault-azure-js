@@ -33,7 +33,7 @@
     "@azure/data-tables": "13.2.1",
     "@azure/logger": "1.0.3",
     "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.172",
-    "@nordicsemiconductor/bdd-markdown": "3.5.14",
+    "@nordicsemiconductor/bdd-markdown": "3.5.29",
     "@nordicsemiconductor/random-words": "6.0.1",
     "@sinclair/typebox": "0.25.9",
     "@swc/cli": "0.1.59",
