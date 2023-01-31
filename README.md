@@ -62,30 +62,33 @@ like to see this feature.
 
 ## Installation in your Azure account
 
-### Setup
-
-```bash
-// FIXME: document
-
-# For the Memfault integration
-export STORAGE_ACCOUNT_NAME=...
-
-# Same as used for the nRF Asset Tracker instance
-export RESOURCE_GROUP=...
-export APP_NAME=...
-export KEY_VAULT_NAME=...
-```
-
-Install the dependencies:
+### Install dependencies
 
 ```bash
 npm ci
 ```
 
+### Setup
+
+Export these environment variables for the Memfault integration stack:
+
+```bash
+export STORAGE_ACCOUNT_NAME=...
+```
+
+Export these environment variables from your nRF Asset Tracker for Azure
+deployment:
+
+```bash
+export RESOURCE_GROUP=...
+export APP_NAME=...
+export KEY_VAULT_NAME=...
+```
+
 ### Deploy
 
 > **Note**  
-> This adds the memfault integration to the existing nRF Asset Tracker for Azure
+> This adds the Memfault integration to the existing nRF Asset Tracker for Azure
 > resources.
 
 ```bash
@@ -111,16 +114,16 @@ You can retrieve the project settings from the settings page of the Memfault
 dashboard of your organization.
 
 ```bash
-// FIXME: document / projectKey --value <your Memfault project key>
-// FIXME: document / organization --value <your organization slug>
-// FIXME: document / project --value <your project slug>
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultProjectKey --value my-projectKey
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultOrganization --value my-org
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultProject --value my-project
 ```
 
 The organization auth token can be accessed and managed by Administrators at
 Admin → Organization Auth Tokens in the Memfault UI.
 
 ```bash
-// FIXME: document / authToken --value <your auth token>
+az keyvault secret set --vault-name ${KEY_VAULT_NAME:-assetTracker} --name memfaultAuthToken --value my-authToken
 ```
 
 ## End-to-end tests
