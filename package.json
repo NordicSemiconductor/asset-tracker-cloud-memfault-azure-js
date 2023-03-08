@@ -34,7 +34,7 @@
     "@azure/logger": "1.0.4",
     "@nordicsemiconductor/asset-tracker-cloud-code-style": "11.0.186",
     "@nordicsemiconductor/bdd-markdown": "3.5.29",
-    "@nordicsemiconductor/random-words": "6.0.1",
+    "@nordicsemiconductor/random-words": "7.0.0",
     "@sinclair/typebox": "0.25.21",
     "@swc/cli": "0.1.62",
     "@swc/jest": "0.2.24",
