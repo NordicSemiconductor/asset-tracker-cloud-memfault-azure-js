@@ -30,7 +30,7 @@ export const publishChunks: AzureFunction = async (
 	})
 
 	await Promise.all(
-		requests.map((chunk) => {
+		requests.map(async (chunk) => {
 			if (chunk.length === 0) {
 				console.error(`Chunk is empty.`)
 				return
