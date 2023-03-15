@@ -156,7 +156,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' existing = {
 }
 
 
-resource keyVaultPermission 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+resource keyVaultPermission 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid('Key Vault Secret User', appName , subscription().subscriptionId)
   properties: {
     roleDefinitionId: keyVaultSecretsUser
