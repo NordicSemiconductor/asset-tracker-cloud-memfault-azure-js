@@ -94,7 +94,7 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-resource applicationInsights 'microsoft.insights/components@2018-05-01-preview' = {
+resource applicationInsights 'microsoft.insights/components@2020-02-02' = {
   name: '${storageAccountName}Insights'
   location: location
   kind: 'web'
