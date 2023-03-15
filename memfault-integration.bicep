@@ -151,7 +151,7 @@ resource applicationInsights 'microsoft.insights/components@2018-05-01-preview' 
   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' existing = {
+resource keyVault 'Microsoft.KeyVault/vaults@2022-11-01' existing = {
   name: keyVaultName
 }
 
