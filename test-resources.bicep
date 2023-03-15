@@ -25,7 +25,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   }
 }
 
-resource iotHub 'Microsoft.Devices/IotHubs@2020-03-01' = {
+resource iotHub 'Microsoft.Devices/IotHubs@2021-07-02' = {
   name: '${appName}IotHub'
   location: location
   properties: {
