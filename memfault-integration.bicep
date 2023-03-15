@@ -24,7 +24,7 @@ resource iotHub 'Microsoft.Devices/IotHubs@2020-03-01' existing = {
   name: '${appName}IotHub'
 }
 
-resource consumerGroup 'Microsoft.Devices/iotHubs/eventhubEndpoints/ConsumerGroups@2020-03-01' = {
+resource consumerGroup 'Microsoft.Devices/iotHubs/eventhubEndpoints/ConsumerGroups@2021-07-02' = {
   name: '${appName}IotHub/events/${memfaultIotEventsConsumerGroupName}'
 }
 
