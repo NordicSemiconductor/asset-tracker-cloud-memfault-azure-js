@@ -20,7 +20,7 @@ param keyVaultName string = 'assetTracker'
 var keyVaultSecretsUser = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var managedIdentity = '${appName}-memfault-integration-functionapp-identity'
 
-resource iotHub 'Microsoft.Devices/IotHubs@2020-03-01' existing = {
+resource iotHub 'Microsoft.Devices/IotHubs@2021-07-02' existing = {
   name: '${appName}IotHub'
 }
 
