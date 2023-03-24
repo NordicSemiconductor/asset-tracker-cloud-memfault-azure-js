@@ -104,7 +104,7 @@ resource applicationInsights 'microsoft.insights/components@2020-02-02' = {
   }
 }
 
-resource table 'Microsoft.Storage/storageAccounts/tableServices@2019-06-01' = {
+resource table 'Microsoft.Storage/storageAccounts/tableServices@2022-09-01' = {
   parent: storageAccount
   name: 'default'
   properties: {
