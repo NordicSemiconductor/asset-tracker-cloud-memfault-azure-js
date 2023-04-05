@@ -40,7 +40,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   }
 }
 
-resource serverFarm 'Microsoft.Web/serverfarms@2019-08-01' = {
+resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   name: '${storageAccountName}Serverfarm'
   location: location
   sku: {
