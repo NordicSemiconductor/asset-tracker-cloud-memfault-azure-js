@@ -56,7 +56,7 @@ resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-3
   location: location
 }
 
-resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
+resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: '${appName}-memfault-integration'
   location: location
   kind: 'functionapp'
