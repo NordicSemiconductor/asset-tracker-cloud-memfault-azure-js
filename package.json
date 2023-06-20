@@ -95,7 +95,7 @@
   "prettier": "@nordicsemiconductor/asset-tracker-cloud-code-style/.prettierrc",
   "dependencies": {
     "@azure/functions": "3.5.1",
-    "@azure/identity": "3.2.2",
+    "@azure/identity": "3.2.3",
     "@azure/keyvault-secrets": "4.7.0",
     "@nordicsemiconductor/from-env": "1.0.3"
   }
