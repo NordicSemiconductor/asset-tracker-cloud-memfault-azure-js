@@ -132,12 +132,12 @@ resource table 'Microsoft.Storage/storageAccounts/tableServices@2022-09-01' = {
   }
 }
 
-resource requestsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2022-09-01' = {
+resource requestsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
   parent: table
   name: 'Requests'
 }
 
-resource responsesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2022-09-01' = {
+resource responsesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
   parent: table
   name: 'Responses'
 }
