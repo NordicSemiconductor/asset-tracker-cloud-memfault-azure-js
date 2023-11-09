@@ -268,6 +268,17 @@ jobs:
       - name: Compile source
         run: npx tsc
 
+      - name: Compile TypeScript
+        run: npx tsc
+
+      - name: Check source code with eslint
+        run:
+          npx eslint --fix --ext .js,.ts,.jsx,.tsx --ignore-pattern
+          commitlint.connfig.js --ignore-path .gitignore ./
+
+      - name: Check if source code is properly formatted
+        run: npx prettier -c ./
+
       - name: Run tests
         env:
           IOT_HUB_NAME: ${{ needs.test-resources.outputs.app-name }}IotHub
