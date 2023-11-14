@@ -1,11 +1,14 @@
+import assert from 'node:assert'
+import { describe, test as it } from 'node:test'
 import { lowerCaseRecord } from './lowerCaseRecord'
 
-describe('lowerCaseRecord', () => {
-	it('should lower-case all keys', () =>
-		expect(
+void describe('lowerCaseRecord', () => {
+	void it('should lower-case all keys', () =>
+		assert.deepStrictEqual(
 			lowerCaseRecord({
 				Foo: 'Bar', // will be overwritten by the next key
 				foo: 'bar',
 			}),
-		).toMatchObject({ foo: 'bar' }))
+			{ foo: 'bar' },
+		))
 })
