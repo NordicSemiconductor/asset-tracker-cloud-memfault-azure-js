@@ -294,7 +294,7 @@ jobs:
           npm run test:e2e
           cat e2e-test-result.json | npx tsx feature-runner/markdown-reporter.ts >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           if-no-files-found: error
