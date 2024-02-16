@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import { describe, test as it } from 'node:test'
-import { lowerCaseRecord } from './lowerCaseRecord'
+import { lowerCaseRecord } from './lowerCaseRecord.js'
 
 void describe('lowerCaseRecord', () => {
 	void it('should lower-case all keys', () =>

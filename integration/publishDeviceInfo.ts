@@ -18,7 +18,7 @@ export const publishDeviceInfo: AzureFunction = async (
 
 	const updateRequest = requests?.[0]
 	if (updateRequest === undefined) {
-		log(context)(`No update found`, { requests: requests })
+		log(context)(`No update found`, { requests })
 		return
 	}
 	const update = JSON.parse(updateRequest.toString('utf-8')) as {
@@ -72,7 +72,7 @@ export const publishDeviceInfo: AzureFunction = async (
 	if (
 		hardware_version !== undefined &&
 		(res.headers['content-type']?.includes('application/json') ?? false) &&
-		(res.headers['content-length'] ?? 0) > 0
+		parseInt(res.headers['content-length'] ?? '0', 10) > 0
 	) {
 		let errorInfo: Record<string, any> | undefined = undefined
 		try {

@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import { describe, test as it } from 'node:test'
-import { splitMockResponse } from './splitMockResponse'
+import { splitMockResponse } from './splitMockResponse.js'
 
 void describe('split mock response', () => {
 	void it('should parse headers and body', () =>

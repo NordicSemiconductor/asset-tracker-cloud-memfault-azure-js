@@ -43,9 +43,9 @@ const mockAPI: AzureFunction = async (
 			partitionKey: requestId,
 			rowKey: encodeURIComponent(methodPathQuery),
 			method: req.method,
-			path: path,
+			path,
 			query: JSON.stringify(req.query),
-			methodPathQuery: methodPathQuery,
+			methodPathQuery,
 			headers: JSON.stringify(req.headers),
 			body: req.rawBody,
 		}

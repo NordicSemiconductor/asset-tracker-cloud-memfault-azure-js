@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import { describe, test as it } from 'node:test'
-import { sortQueryString } from './sortQueryString'
+import { sortQueryString } from './sortQueryString.js'
 
 void describe('sortQueryString', () => {
 	void it('should sort the query part of a mock URL', () =>

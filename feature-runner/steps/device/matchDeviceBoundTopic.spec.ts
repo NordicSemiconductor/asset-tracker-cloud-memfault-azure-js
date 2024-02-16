@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import { describe, test as it } from 'node:test'
-import { matchDeviceBoundTopic } from './matchDeviceBoundTopic'
+import { matchDeviceBoundTopic } from './matchDeviceBoundTopic.js'
 
 void describe('matchTopic', () => {
 	void it('should match a simple topic', () =>
