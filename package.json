@@ -83,7 +83,7 @@
       ]
     ]
   },
-  "prettier": "@nordicsemiconductor/asset-tracker-cloud-code-style/.prettierrc",
+  "prettier": "@bifravst/prettier-config",
   "dependencies": {
     "@azure/functions": "3.5.1",
     "@azure/identity": "3.4.2",
