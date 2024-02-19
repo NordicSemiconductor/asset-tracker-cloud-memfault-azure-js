@@ -46,7 +46,7 @@
     "chai": "4.4.1",
     "chai-subset": "1.6.0",
     "check-node-version": "4.2.1",
-    "husky": "9.0.7",
+    "husky": "9.0.11",
     "id128": "1.6.6",
     "tsx": "3.14.0"
   },
