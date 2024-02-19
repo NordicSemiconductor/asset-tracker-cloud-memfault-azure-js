@@ -10,5 +10,5 @@ export const sortQueryString = (mockUrl: string): string => {
 	for (const [k, v] of params) {
 		sortedParams.append(k, v)
 	}
-	return `${host}?${sortedParams}`
+	return `${host}?${sortedParams.toString()}`
 }

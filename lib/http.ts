@@ -28,6 +28,6 @@ export const result =
 		for (const [k, v] of Object.entries(response.headers)) {
 			log(context)(`> ${k}: ${v}`)
 		}
-		log(context)(`> ${result}`)
+		log(context)(`> ${JSON.stringify(result)}`)
 		return response
 	}
