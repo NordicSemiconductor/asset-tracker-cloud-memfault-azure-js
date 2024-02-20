@@ -59,7 +59,7 @@ jobs:
           node-version: "20.x"
 
       - name: Keep npm cache around to speed up installs
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.OS }}-build-${{ hashFiles('**/package-lock.json') }}
@@ -257,7 +257,7 @@ jobs:
           node-version: "20.x"
 
       - name: Keep npm cache around to speed up installs
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.OS }}-build-${{ hashFiles('**/package-lock.json') }}
@@ -361,7 +361,7 @@ jobs:
           node-version: "20.x"
 
       - name: Keep npm cache around to speed up installs
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: build-${{ hashFiles('**/package-lock.json') }}
