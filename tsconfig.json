@@ -14,7 +14,7 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
     "moduleResolution": "nodenext",
-    "module": "ES2022",
+    "module": "nodenext",
     "allowSyntheticDefaultImports": true,
     "target": "ES2022",
     "outDir": "./dist"
