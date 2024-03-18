@@ -8,7 +8,7 @@ import {
 } from '@nordicsemiconductor/bdd-markdown'
 import { randomWords } from '@nordicsemiconductor/random-words'
 import { Type } from '@sinclair/typebox'
-import { Message } from 'azure-iot-common/dist/message'
+import { Message } from 'azure-iot-common'
 import { Client } from 'azure-iot-device'
 import { clientFromConnectionString } from 'azure-iot-device-mqtt'
 import { Registry } from 'azure-iothub'
