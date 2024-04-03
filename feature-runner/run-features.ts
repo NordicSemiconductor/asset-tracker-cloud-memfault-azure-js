@@ -11,7 +11,7 @@ import path from 'path'
 import { cliCredentials } from '../cli/cliCredentials.js'
 import { progress as logProgress } from '../cli/logging.js'
 import { error, heading, settings } from '../cli/logging.js'
-import { run } from '../cli/run.js'
+import run from '@bifravst/run'
 import { deviceStepRunners } from './steps/device.js'
 import { httpApiMockStepRunners } from './steps/httpApiMock.js'
 const { Registry } = iothub
