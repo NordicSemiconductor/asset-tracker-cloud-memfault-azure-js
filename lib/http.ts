@@ -1,4 +1,4 @@
-import { Context } from '@azure/functions'
+import type { Context } from '@azure/functions'
 import { log } from './log.js'
 import { lowerCaseRecord } from './lowerCaseRecord.js'
 

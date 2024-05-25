@@ -1,10 +1,12 @@
-import { TableClient } from '@azure/data-tables'
+import type { TableClient } from '@azure/data-tables'
+import type {
+	StepRunner,
+	StepRunResult,
+} from '@nordicsemiconductor/bdd-markdown'
 import {
 	codeBlockOrThrow,
 	matchGroups,
 	noMatch,
-	StepRunner,
-	StepRunResult,
 } from '@nordicsemiconductor/bdd-markdown'
 import { Type } from '@sinclair/typebox'
 import * as chai from 'chai'

@@ -1,4 +1,4 @@
-import { Context } from '@azure/functions'
+import type { Context } from '@azure/functions'
 
 export const log =
 	(context: Context) =>

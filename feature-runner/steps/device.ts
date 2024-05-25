@@ -1,20 +1,22 @@
-import { CertificateDescription, IotHubClient } from '@azure/arm-iothub'
+import type { CertificateDescription, IotHubClient } from '@azure/arm-iothub'
+import type {
+	StepRunner,
+	StepRunResult,
+} from '@nordicsemiconductor/bdd-markdown'
 import {
 	codeBlockOrThrow,
 	matchGroups,
 	noMatch,
-	StepRunner,
-	StepRunResult,
 } from '@nordicsemiconductor/bdd-markdown'
 import { randomWords } from '@nordicsemiconductor/random-words'
 import { Type } from '@sinclair/typebox'
 import { Message } from 'azure-iot-common'
-import { Client } from 'azure-iot-device'
+import type { Client } from 'azure-iot-device'
 import { clientFromConnectionString } from 'azure-iot-device-mqtt'
-import { Registry } from 'azure-iothub'
+import type { Registry } from 'azure-iothub'
 import * as chai from 'chai'
 import chaiSubset from 'chai-subset'
-import { World } from '../run-features.js'
+import type { World } from '../run-features.js'
 chai.use(chaiSubset)
 
 export const deviceStepRunners = ({

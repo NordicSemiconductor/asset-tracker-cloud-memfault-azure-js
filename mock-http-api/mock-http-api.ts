@@ -1,5 +1,5 @@
 import { AzureNamedKeyCredential, TableClient } from '@azure/data-tables'
-import { AzureFunction, Context, HttpRequest } from '@azure/functions'
+import type { AzureFunction, Context, HttpRequest } from '@azure/functions'
 import { setLogLevel } from '@azure/logger'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import { URL } from 'url'
