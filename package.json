@@ -15,7 +15,7 @@
   "bugs": {
     "url": "https://github.com/NordicSemiconductor/asset-tracker-cloud-memfault-azure-js/issues"
   },
-  "homepage": "https://nordicsemiconductor.github.io/asset-tracker-cloud-docs/",
+  "homepage": "https://docs.nordicsemi.com/bundle/nrf-asset-tracker-saga/",
   "keywords": [
     "nrf-asset-tracker",
     "iot",
