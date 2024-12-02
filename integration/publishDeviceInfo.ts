@@ -1,7 +1,7 @@
-import { AzureFunction, Context } from '@azure/functions'
+import type { AzureFunction, Context } from '@azure/functions'
 import { log, logError } from '../lib/log.js'
-import { createMemfaultHardwareVersion } from './createMemfaultHardwareVersion.js'
-import { updateMemfaultDeviceInfo } from './updateMemfaultDeviceInfo.js'
+import type { createMemfaultHardwareVersion } from './createMemfaultHardwareVersion.js'
+import type { updateMemfaultDeviceInfo } from './updateMemfaultDeviceInfo.js'
 
 /**
  * Receives updates to the reported device information to provide it to Memfault's device information

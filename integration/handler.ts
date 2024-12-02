@@ -1,4 +1,4 @@
-import { AzureFunction, Context } from '@azure/functions'
+import type { AzureFunction, Context } from '@azure/functions'
 import { fromEnv } from '@nordicsemiconductor/from-env'
 import { memfaultConfig } from '../lib/config.js'
 import { log } from '../lib/log.js'

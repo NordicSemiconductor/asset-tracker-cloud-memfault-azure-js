@@ -1,6 +1,6 @@
-import { AzureFunction, Context } from '@azure/functions'
+import type { AzureFunction, Context } from '@azure/functions'
 import { log, logError } from '../lib/log.js'
-import { publishMemfaultChunks } from './publishMemfaultChunks.js'
+import type { publishMemfaultChunks } from './publishMemfaultChunks.js'
 
 /**
  * Publishes Memfault chunk messages to the chunks API.
